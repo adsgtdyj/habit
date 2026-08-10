@@ -6,8 +6,7 @@
     "pages/analytics/analytics",
     "pages/stats/stats",
     "pages/habit-edit/habit-edit",
-    "pages/habit-detail/habit-detail",
-    "pages/login/login"
+    "pages/habit-detail/habit-detail"
   ],
   "window": {
     "navigationBarTitleText": "AI成长助理",

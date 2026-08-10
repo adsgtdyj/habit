@@ -1,5 +1,5 @@
 // Wraps wx.cloud.callFunction so pages/store don't need to know cloud APIs.
-// getData / putData / sendChat / claimLegacy — matches interface consumed by store.js.
+// getData / putData / sendChat — matches interface consumed by store.js.
 
 function callFn(name, data, options) {
   const opts = options || {};
@@ -40,13 +40,6 @@ function sendChat(payload) {
   return callFn('chat', payload || {}, { timeout: 60000 });
 }
 
-function claimLegacy(username, password) {
-  return callFn('claimLegacy', { username, password }).then(res => {
-    if (!res || !res.ok) throw { statusCode: 0, data: res, message: (res && res.error) || '认领失败' };
-    return res;
-  });
-}
-
 function saveReminder(payload) {
   return callFn('saveReminder', payload || {});
 }
@@ -66,5 +59,5 @@ function saveChat(messages) {
 }
 
 module.exports = {
-  getData, putData, sendChat, claimLegacy, saveReminder, getChat, saveChat
+  getData, putData, sendChat, saveReminder, getChat, saveChat
 };

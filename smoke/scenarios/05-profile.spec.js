@@ -136,45 +136,6 @@ module.exports = {
 
     page = await mp.currentPage();
     await helpers.waitReady(page);
-    try {
-      await mp.mockWxMethod('showModal', (cfg) => {
-        if (cfg && cfg.success) cfg.success({ confirm: true, cancel: false });
-      });
-    } catch (e) { /* mockWxMethod not supported */ }
-
-    const settingItems = await page.$$('.setting-item');
-    let logoutBtn = null;
-    for (const it of settingItems) {
-      const html = await it.outerWxml();
-      if (/退出登录/.test(html)) { logoutBtn = it; break; }
-    }
-    if (!logoutBtn) {
-      report.step('找退出按钮', 'warn', '未找到');
-    } else {
-      await logoutBtn.tap();
-      const reachedLogin = await helpers.waitUntil(async () => {
-        const stack = await mp.pageStack();
-        return stack.length === 1 && stack[0].path.includes('login');
-      }, { timeout: 6000 });
-      if (!reachedLogin) {
-        report.step('退出后到登录页', 'fail', '未跳转到 login');
-      } else {
-        report.step('退出后到登录页', 'pass', '已 reLaunch 到 /pages/login/login');
-        await mp.reLaunch('/pages/index/index');
-        await new Promise(r => setTimeout(r, 2000));
-        page = await mp.currentPage();
-        await helpers.waitReady(page);
-        data = await page.data();
-        const reloaded = (data.habits || []).length;
-        if (reloaded > 0) {
-          report.step('退出重进数据', 'pass', `重新加载到 ${reloaded} 个习惯`);
-        } else {
-          report.step('退出重进数据', 'warn', `habit 数 = 0`);
-        }
-      }
-    }
-
-    try { await mp.restoreWxMethod('showModal'); } catch {}
 
     const shot = await helpers.screenshot('profile-final');
     if (shot) report.shot(shot);

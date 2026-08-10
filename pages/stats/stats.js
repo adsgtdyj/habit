@@ -95,10 +95,6 @@ Page({
     });
   },
 
-  onLogout() {
-    // 已移除：小程序 OPENID 自动登录，"退出登录"无真实意义
-  },
-
   onExportData() {
     const data = store.getData();
     const json = JSON.stringify(data, null, 2);

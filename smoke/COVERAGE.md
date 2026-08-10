@@ -72,10 +72,4 @@
 9. 点 `.tone-option.sassy` 切毒舌
 10. 切到 assistant，断言 tone/toneLabel 同步
 11. 切回 stats 把语气改回 normal
-12. Mock `wx.showModal` 让 confirm 自动返回 true
-13. 从 `.setting-item` 里找到含"退出登录"文案的项，点击
-14. 断言 6s 内 reLaunch 到 login 页
-15. 手动 reLaunch 回 index，等 2s
-16. 断言重新加载后 `habits.length > 0`（登录态与数据能自恢复）
-17. 恢复 `wx.showModal` mock
-18. 截图 `profile-final`
+12. 截图 `profile-final`
