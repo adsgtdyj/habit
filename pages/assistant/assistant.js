@@ -27,12 +27,14 @@ Page({
     // 滚动控制
     scrollTarget: '',
     autoScroll: true,
-    // 输入框高度（按行数动态调整，避免 auto-height 闪烁）
-    inputHeight: '72rpx'
+    // textarea 内容区高度（行数 × 40rpx），由 _syncInputHeight 实测后写入；padding 在外层 .ai-input-box 上
+    inputHeight: '40rpx'
   },
 
   onLoad() {
     const sys = wx.getWindowInfo();
+    // boundingClientRect 返回 px，换算成 rpx 才能和 40rpx 行高比较
+    this._px2rpx = 750 / (sys.windowWidth || 375);
     this.setData({ statusH: (sys.statusBarHeight || 44) + 'px' });
   },
 
@@ -42,18 +44,21 @@ Page({
     }
     // 进入页面时恢复自动跟随
     this.setData({ autoScroll: true });
+    let prefill = '';
     const pending = getApp().globalData.pendingHabitId;
     if (pending) {
       getApp().globalData.pendingHabitId = '';
       const habit = store.getHabits().find(h => h.id === pending);
-      if (habit) {
-        this.setData({ inputValue: '关于「' + habit.name + '」，' });
-      }
+      if (habit) prefill = '关于「' + habit.name + '」，';
     }
     const pendingPrompt = getApp().globalData.pendingPrompt;
     if (pendingPrompt) {
       getApp().globalData.pendingPrompt = '';
-      this.setData({ inputValue: pendingPrompt });
+      prefill = pendingPrompt;
+    }
+    // 预填必须在 setData 回调里量高度，否则代理尺子还没渲染出新文本
+    if (prefill) {
+      this.setData({ inputValue: prefill }, () => this._syncInputHeight());
     }
     this._refreshChat();
   },
@@ -130,14 +135,22 @@ Page({
   },
 
   onInput(e) {
-    this.setData({ inputValue: e.detail.value });
+    this.setData({ inputValue: e.detail.value }, () => this._syncInputHeight());
   },
 
-  onLineChange(e) {
-    const lineCount = (e.detail && e.detail.lineCount) || 1;
-    // 每行 40rpx + 上下 padding 32rpx
-    const h = Math.min(240, 72 + (lineCount - 1) * 40);
-    this.setData({ inputHeight: h + 'rpx' });
+  // 用隐藏 <text> 当代理尺子实测换行高度，绕开原生 textarea 的盒模型和 auto-height
+  // 量到的 px 换算成 rpx 后按 40rpx 行高取整，避免亚像素误差导致高度抖动
+  _syncInputHeight() {
+    wx.createSelectorQuery().in(this)
+      .select('.ai-input-measure')
+      .boundingClientRect(rect => {
+        if (!rect) return;
+        const rpx = rect.height * this._px2rpx;
+        const lines = Math.min(4, Math.max(1, Math.round(rpx / 40)));
+        const h = lines * 40 + 'rpx';
+        if (h !== this.data.inputHeight) this.setData({ inputHeight: h });
+      })
+      .exec();
   },
 
   onSend() {
@@ -150,6 +163,7 @@ Page({
     this.setData({
       messages: [...this.data.messages, userMsg, pendingMsg],
       inputValue: '',
+      inputHeight: '40rpx',
       sending: true,
       autoScroll: true
     });
@@ -260,23 +274,23 @@ Page({
     if (this.data.sending || this.data.voiceUploading) return;
     if (!this.data.voiceMode) return;
     const touch = e.touches && e.touches[0];
-    const startY = touch ? touch.clientY : 0;
     this._touching = true;
 
-    wx.getSetting({
-      success: (res) => {
-        if (res.authSetting['scope.record'] === false) {
-          wx.showModal({
-            title: '需要麦克风权限',
-            content: '请在设置中开启录音权限',
-            confirmText: '去开启',
-            success: (r) => { if (r.confirm) wx.openSetting(); }
-          });
-          return;
-        }
-        this._startRecord(startY);
-      }
+    // 立刻进入录音态：不等 getSetting 和 recorder.onStart 回调，否则按下到出现界面有明显延迟
+    this.setData({
+      voiceRecording: true,
+      voiceCancel: false,
+      voiceStartY: touch ? touch.clientY : 0,
+      voiceElapsed: 0,
+      voiceHoldText: '正在说话 0 秒，上滑取消'
     });
+    wx.vibrateShort({ type: 'light' });
+    this._startRecord();
+  },
+
+  _resetVoiceUI() {
+    clearInterval(this._recTimer);
+    this.setData({ voiceRecording: false, voiceCancel: false, voiceHoldText: '按住说话' });
   },
 
   // recorderManager 是单例，回调只能注册一次，否则每次录音会重复触发
@@ -284,24 +298,34 @@ Page({
     if (this._recorder) return this._recorder;
     const rm = wx.getRecorderManager();
     rm.onStart(() => {
-      this.setData({
-        voiceRecording: true,
-        voiceCancel: false,
-        voiceStartY: this._pendingStartY || 0,
-        voiceElapsed: 0,
-        voiceHoldText: '正在说话 0 秒，上滑取消'
-      });
+      this._recStarted = true;
+      // 用户在 recorder 真正启动前就松手了，这里补一次 stop
+      if (this._stopPending) {
+        this._stopPending = false;
+        try { rm.stop(); } catch (e) { this._resetVoiceUI(); }
+      }
     });
     rm.onError((err) => {
       console.error('recorder error:', err);
-      clearInterval(this._recTimer);
-      this.setData({ voiceRecording: false, voiceCancel: false, voiceHoldText: '按住说话' });
-      wx.showToast({ title: '录音失败：' + (err.errMsg || ''), icon: 'none' });
+      this._recStarted = false;
+      this._stopPending = false;
+      this._resetVoiceUI();
+      const msg = (err && err.errMsg) || '';
+      if (msg.indexOf('auth') > -1 || msg.indexOf('deny') > -1 || msg.indexOf('privacy') > -1) {
+        wx.showModal({
+          title: '需要麦克风权限',
+          content: '请在设置中开启录音权限',
+          confirmText: '去开启',
+          success: (r) => { if (r.confirm) wx.openSetting(); }
+        });
+      } else {
+        wx.showToast({ title: '录音失败：' + msg, icon: 'none' });
+      }
     });
     rm.onStop((res) => {
-      clearInterval(this._recTimer);
+      this._recStarted = false;
       const cancelled = this.data.voiceCancel;
-      this.setData({ voiceRecording: false, voiceCancel: false, voiceHoldText: '按住说话' });
+      this._resetVoiceUI();
       if (cancelled) return;
       // 录音太短：静默重置，不打扰用户
       if (!res.tempFilePath || res.duration < 500) return;
@@ -311,12 +335,11 @@ Page({
     return rm;
   },
 
-  _startRecord(startY) {
-    // 授权回调是异步的，若用户已经松手就不再开始录音
-    if (!this._touching) return;
+  _startRecord() {
     const rm = this._getRecorder();
+    this._recStarted = false;
+    this._stopPending = false;
     this._recStartTs = Date.now();
-    this._pendingStartY = startY;
     this._recTimer = setInterval(() => {
       const sec = Math.floor((Date.now() - this._recStartTs) / 1000);
       this.setData({
@@ -332,6 +355,16 @@ Page({
       encodeBitRate: 48000,
       format: 'mp3'
     });
+  },
+
+  _stopRecord() {
+    if (!this._recorder) { this._resetVoiceUI(); return; }
+    // recorder 还没启动完就松手：标记一下，等 onStart 里再停
+    if (!this._recStarted) {
+      this._stopPending = true;
+      return;
+    }
+    try { this._recorder.stop(); } catch (e) { this._resetVoiceUI(); }
   },
 
   onVoiceMove(e) {
@@ -350,15 +383,15 @@ Page({
 
   onVoiceEnd() {
     this._touching = false;
-    if (!this._recorder || !this.data.voiceRecording) return;
-    try { this._recorder.stop(); } catch (e) {}
+    if (!this.data.voiceRecording) return;
+    this._stopRecord();
   },
 
   onVoiceCancel() {
     this._touching = false;
-    if (!this._recorder || !this.data.voiceRecording) return;
+    if (!this.data.voiceRecording) return;
     this.setData({ voiceCancel: true, voiceHoldText: '松开取消发送' });
-    try { this._recorder.stop(); } catch (e) {}
+    this._stopRecord();
   },
 
   _transcribe(filePath, duration) {
@@ -379,10 +412,12 @@ Page({
             const text = res.result && res.result.text;
             if (text) {
               // 识别成功：切回文字模式，让用户看到/编辑/发送
+              // 去掉换行（ASR 偶发带换行会多撑一行），高度和手动输入走同一套计算
+              const nextValue = (this.data.inputValue || '') + String(text).replace(/[\r\n]+/g, ' ').trim();
               this.setData({
-                inputValue: (this.data.inputValue || '') + text,
+                inputValue: nextValue,
                 voiceMode: false
-              });
+              }, () => this._syncInputHeight());
             } else {
               const errMsg = (res.result && res.result.error) || '';
               if (errMsg) {

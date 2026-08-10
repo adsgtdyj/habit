@@ -1,6 +1,9 @@
 /* ===== 共用 ===== */
 page{height:100%;}
 
+/* 统一所有原生输入控件的字体，避免 input/textarea 默认字体不一致 */
+input,textarea{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;}
+
 @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(40rpx)}to{opacity:1;transform:translateY(0)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8rpx)}}
@@ -41,7 +44,7 @@ page{height:100%;}
 
 .coach-tab{justify-content:flex-start;overflow:visible;}
 .coach-circle{
-  width:112rpx;height:112rpx;margin-top:-32rpx;border-radius:50%;
+  width:112rpx;height:112rpx;margin-top:-8rpx;border-radius:50%;
   background:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);
   box-shadow:0 20rpx 48rpx rgba(99,102,241,0.4),inset 0 2rpx 0 rgba(255,255,255,0.45);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rpx;

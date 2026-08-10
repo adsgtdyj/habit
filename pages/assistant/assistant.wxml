@@ -83,19 +83,21 @@
         <view wx:if="{{voiceEnabled}}" class="ai-mode-btn" bindtap="onToggleVoiceMode">
           <view class="mode-icon {{voiceMode ? 'mode-icon-keyboard' : 'mode-icon-mic'}}"></view>
         </view>
-        <!-- 文字输入 -->
-        <textarea wx:if="{{!voiceMode}}" class="ai-input ai-textarea"
-          style="height:{{inputHeight}}"
-          placeholder="问教练一句..."
-          value="{{inputValue}}"
-          bindinput="onInput"
-          bindlinechange="onLineChange"
-          maxlength="500"
-          show-confirm-bar="{{false}}"
-          adjust-position="{{true}}"
-          cursor-spacing="20"
-          disable-default-padding="{{true}}"
-          disabled="{{sending}}"></textarea>
+        <!-- 文字输入：边框/背景/padding 在外层 view，textarea 高度由 JS 实测文本行数写入 -->
+        <view wx:if="{{!voiceMode}}" class="ai-input-box">
+          <textarea class="ai-textarea"
+            style="height:{{inputHeight}}"
+            placeholder="问教练一句..."
+            value="{{inputValue}}"
+            bindinput="onInput"
+            maxlength="500"
+            show-confirm-bar="{{false}}"
+            adjust-position="{{true}}"
+            cursor-spacing="20"
+            disable-default-padding="{{true}}"
+            disabled="{{sending}}"></textarea>
+          <text class="ai-input-measure">{{inputValue}}</text>
+        </view>
         <!-- 语音长按按钮 -->
         <view wx:if="{{voiceMode}}" class="ai-voice-hold {{voiceRecording ? 'recording' : ''}} {{voiceCancel ? 'canceling' : ''}}"
           bindtouchstart="onVoiceStart"

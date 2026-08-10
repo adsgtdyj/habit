@@ -6,12 +6,12 @@
 .assistant-header{padding:28rpx 48rpx 0}
 .ah-title{font-size:52rpx;font-weight:900;letter-spacing:-1rpx;background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
 .ah-sub{font-size:28rpx;color:#64748b;margin-top:12rpx;font-weight:500}
-.sync-status{font-size:24rpx;display:inline-flex;align-items:center;gap:12rpx;padding:10rpx 18rpx;border-radius:999rpx;color:#64748b;background:rgba(255,255,255,0.72);border:2rpx solid rgba(148,163,184,0.28)}
+.sync-status{font-size:24rpx;display:inline-flex;align-items:center;gap:12rpx;padding:10rpx 18rpx;border-radius:999rpx;color:#64748b;background:rgba(255,255,255,0.72);border:2rpx solid rgba(148,163,184,0.28);font-weight:600}
 .sync-status.ok{color:#047857;background:rgba(209,250,229,0.75);border-color:rgba(16,185,129,0.28)}
 .ah-row{margin-top:16rpx;display:flex;align-items:center;gap:16rpx;flex-wrap:wrap}
-.tone-badge{font-size:24rpx;padding:10rpx 20rpx;border-radius:999rpx;font-weight:800;letter-spacing:0.5rpx;border:2rpx solid transparent}
+.tone-badge{font-size:24rpx;padding:10rpx 20rpx;border-radius:999rpx;font-weight:600;border:2rpx solid transparent;display:inline-flex;align-items:center}
 .tone-badge.normal{color:#4338ca;background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.28)}
-.tone-badge.mild{color:#047857;background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.28)}
+.tone-badge.mild{color:#047857;background:rgba(209,250,229,0.75);border-color:rgba(16,185,129,0.28)}
 .tone-badge.sassy{color:#be185d;background:rgba(236,72,153,0.12);border-color:rgba(236,72,153,0.32)}
 
 /* 快捷操作横排 */
@@ -43,18 +43,21 @@
 
 /* AI输入栏 */
 .ai-input-bar{background:rgba(255,255,255,0.96);padding:20rpx 32rpx;border-top:2rpx solid rgba(148,163,184,0.18);flex-shrink:0;box-shadow:0 -6rpx 24rpx rgba(0,0,0,0.04)}
-.ai-input-row{display:flex;gap:20rpx;align-items:flex-end}
-.ai-mode-btn,.ai-send-btn{width:72rpx;height:72rpx;border-radius:36rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-input-row{display:flex;gap:20rpx;align-items:center}
+.ai-mode-btn,.ai-send-btn{width:96rpx;height:96rpx;border-radius:48rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ai-mode-btn{background:#f8fafc;border:4rpx solid #e2e8f0;box-shadow:0 8rpx 28rpx rgba(99,102,241,0.12)}
-.mode-icon{width:36rpx;height:36rpx;background-repeat:no-repeat;background-position:center;background-size:contain}
-.ai-input{flex:1;height:72rpx;box-sizing:border-box;padding:0 32rpx;border:4rpx solid #e2e8f0;border-radius:36rpx;font-size:30rpx;line-height:72rpx;background:#f8fafc;color:#94a3b8;font-weight:500}
-.ai-textarea{height:72rpx;min-height:72rpx;max-height:240rpx;padding:16rpx 28rpx;line-height:40rpx;color:#1e293b;font-weight:500;overflow-y:auto;transition:height 0.1s}
+.mode-icon{width:44rpx;height:44rpx;background-repeat:no-repeat;background-position:center;background-size:contain}
+/* 外层 view 承担边框/背景/padding，box-sizing 下单行 = 40 内容 + 48 padding + 8 border = 96rpx，与两侧按钮等高 */
+.ai-input-box{position:relative;flex:1;box-sizing:border-box;min-height:96rpx;padding:24rpx 32rpx;border:4rpx solid #e2e8f0;border-radius:48rpx;background:#f8fafc;overflow:hidden}
+.ai-input-box .ai-textarea{width:100%;height:40rpx;line-height:40rpx;font-size:28rpx;color:#1e293b;background:transparent}
+/* 代理尺子：与 textarea 内容区等宽同字号，absolute 不参与布局，仅供 SelectorQuery 量真实换行高度 */
+.ai-input-measure{position:absolute;visibility:hidden;display:block;top:0;left:32rpx;right:32rpx;line-height:40rpx;font-size:28rpx;white-space:pre-wrap;word-break:break-all}
 .ai-send-btn{background:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);box-shadow:0 8rpx 32rpx rgba(99,102,241,0.35)}
-.send-icon{width:36rpx;height:36rpx;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='22' y1='2' x2='11' y2='13'/%3E%3Cpolygon points='22 2 15 22 11 13 2 9 22 2'/%3E%3C/svg%3E")}
+.send-icon{width:44rpx;height:44rpx;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='22' y1='2' x2='11' y2='13'/%3E%3Cpolygon points='22 2 15 22 11 13 2 9 22 2'/%3E%3C/svg%3E")}
 
-/* 语音长按按钮 */
+/* 语音长按按钮：与文字输入框同高，长按目标要够大 */
 .ai-voice-hold{
-  flex:1;height:72rpx;border-radius:36rpx;border:4rpx solid #e2e8f0;background:#f8fafc;
+  flex:1;height:96rpx;box-sizing:border-box;border-radius:48rpx;border:4rpx solid #e2e8f0;background:#f8fafc;
   color:#475569;font-size:30rpx;font-weight:800;letter-spacing:0.5rpx;
   display:flex;align-items:center;justify-content:center;
   transition:all 0.2s;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.75);
