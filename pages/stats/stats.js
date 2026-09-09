@@ -128,7 +128,16 @@ Page({
         }
         this._confirmAndImport(text);
       },
-      fail: () => wx.showToast({ title: '读取剪贴板失败', icon: 'none' })
+      fail: (err) => {
+        // 诊断：把真实错误透出来，便于区分"系统拒绝读取"和"剪贴板为空"等场景
+        console.error('getClipboardData fail:', err);
+        const msg = (err && err.errMsg) ? err.errMsg.replace('getClipboardData:fail ', '') : '';
+        wx.showModal({
+          title: '读取剪贴板失败',
+          content: msg || '未知原因。请确认：1) 已先在微信内复制文本 2) 系统设置里微信有粘贴权限',
+          showCancel: false
+        });
+      }
     });
   },
 
