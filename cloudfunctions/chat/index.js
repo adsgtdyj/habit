@@ -1,16 +1,15 @@
 const https = require('https');
+const http = require('http');
 const { URL } = require('url');
+const cloud = require('wx-server-sdk');
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const ARK_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-function cleanApiKey(raw) {
-  if (!raw) return '';
-  let s = String(raw).replace(/[\r\n\t]/g, '').trim();
-  s = s.replace(/^['"]+/, '').replace(/['"]+$/, '').trim();
-  if (/^bearer\s+/i.test(s)) s = s.replace(/^bearer\s+/i, '').trim();
-  return s;
-}
-const ARK_API_KEY = cleanApiKey(process.env.ARK_API_KEY);
-const ARK_MODEL = (process.env.ARK_MODEL || 'ep-20260604101325-f2wcq').trim();
+// AI 调用统一走 WorkTrace Relay 网关（方案 A）
+// 网关接口：POST {RELAY_BASE_URL}/api/v3/chat/completions，请求头 X-Invite-Code 携带 Habit tab 签发的邀请码
+const RELAY_BASE_URL = (process.env.RELAY_BASE_URL || '').replace(/\/+$/, '');
+const RELAY_INVITE_CODE = (process.env.RELAY_INVITE_CODE || '').replace(/[\r\n\t]/g, '').trim();
+const RELAY_MODEL = (process.env.RELAY_MODEL || 'deepseek-chat').trim();
+const RELAY_TIMEOUT = parseInt(process.env.RELAY_TIMEOUT || '45000', 10);
 
 function todayStr() {
   const d = new Date();
@@ -155,29 +154,29 @@ function parseAIResponse(content) {
   return { reply: content.replace(/\[action:.*?\]/g, '').trim(), action: null, quickReplies: [] };
 }
 
-function callArk(messages, systemPrompt) {
+function callRelay(messages) {
   return new Promise((resolve, reject) => {
-    if (!ARK_API_KEY) return reject(new Error('云函数缺少 ARK_API_KEY 环境变量，请在云开发控制台 chat 云函数「配置 > 环境变量」里添加'));
-    if (ARK_API_KEY.length < 20) return reject(new Error('ARK_API_KEY 长度异常（仅 ' + ARK_API_KEY.length + ' 字符），请检查云函数环境变量是否完整'));
-    if (!/^ark-/.test(ARK_API_KEY)) return reject(new Error('ARK_API_KEY 应以 "ark-" 开头，当前开头为：" ' + ARK_API_KEY.slice(0, 6) + ' "，请检查'));
-    if (!ARK_MODEL) return reject(new Error('缺少 ARK_MODEL'));
-    const u = new URL(ARK_ENDPOINT);
+    if (!RELAY_BASE_URL) return reject(new Error('云函数缺少 RELAY_BASE_URL 环境变量（WorkTrace Relay 网关地址）'));
+    if (!RELAY_INVITE_CODE) return reject(new Error('云函数缺少 RELAY_INVITE_CODE 环境变量（Relay 后台 Habit tab 签发的邀请码）'));
+    let u;
+    try { u = new URL(RELAY_BASE_URL + '/api/v3/chat/completions'); } catch (e) { return reject(new Error('RELAY_BASE_URL 格式不合法: ' + RELAY_BASE_URL)); }
     const body = JSON.stringify({
-      model: ARK_MODEL,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      model: RELAY_MODEL,
+      messages,
       temperature: 0.8,
-      max_tokens: 1024
+      max_tokens: 1024,
+      stream: false
     });
-    const req = https.request({
+    const req = (u.protocol === 'http:' ? http : https).request({
       hostname: u.hostname,
-      port: 443,
-      path: u.pathname,
+      port: u.port || (u.protocol === 'http:' ? 80 : 443),
+      path: u.pathname + (u.search || ''),
       method: 'POST',
-      timeout: 45000,
+      timeout: RELAY_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
-        'Authorization': 'Bearer ' + ARK_API_KEY
+        'X-Invite-Code': RELAY_INVITE_CODE
       }
     }, (res) => {
       let raw = '';
@@ -185,20 +184,45 @@ function callArk(messages, systemPrompt) {
       res.on('data', chunk => raw += chunk);
       res.on('end', () => {
         let data;
-        try { data = JSON.parse(raw); } catch (e) { return reject(new Error('Ark 返回非 JSON: ' + raw.slice(0, 200))); }
+        try { data = JSON.parse(raw); } catch (e) { return reject(new Error('Relay 返回非 JSON: ' + raw.slice(0, 200))); }
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          return reject(new Error((data.error && data.error.message) || data.message || 'Ark 状态码 ' + res.statusCode));
+          const detail = (data && (data.detail || data.error && data.error.message)) || ('状态码 ' + res.statusCode);
+          return reject(new Error('Relay: ' + detail));
         }
-        const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-        if (!content) return reject(new Error('Ark 未返回有效回复'));
+        // 兼容两种上游响应形态：OpenAI 格式（choices）与 Anthropic 格式（content 数组）
+        const openaiContent = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        const anthropicContent = Array.isArray(data.content)
+          ? data.content.filter(b => b && b.type === 'text').map(b => b.text || '').join('')
+          : '';
+        const content = openaiContent || anthropicContent;
+        if (!content) return reject(new Error('Relay 未返回有效回复'));
         resolve(content);
       });
     });
-    req.on('timeout', () => { req.destroy(new Error('Ark 请求超时')); });
+    req.on('timeout', () => { req.destroy(new Error('Relay 请求超时')); });
     req.on('error', reject);
     req.write(body);
     req.end();
   });
+}
+
+// 文本安全检测：返回 true 表示通过（非明确违规）。服务异常时放行并打日志。
+async function checkText(content, openid) {
+  if (!content) return true;
+  const text = String(content).trim();
+  if (!text || text.length > 2500) return true;
+  try {
+    const res = await cloud.openapi.security.msgSecCheck({
+      content: text,
+      version: 2,
+      scene: 2,
+      openid: openid || ''
+    });
+    return !(res && res.result && res.result.suggest === 'risky');
+  } catch (e) {
+    console.error('msgSecCheck error:', e.errMsg || e);
+    return true;
+  }
 }
 
 exports.main = async (event) => {
@@ -211,14 +235,30 @@ exports.main = async (event) => {
   const chatHistory = (event && event.chatHistory) || [];
 
   try {
+    const { OPENID } = cloud.getWXContext();
     const stats = calcStats(habits, checkins);
     const systemPrompt = buildSystemPrompt(habits, checkins, stats, settings);
     const recentHistory = chatHistory.slice(-10).map(m => ({
       role: m.role === 'ai' ? 'assistant' : m.role,
       content: m.text || m.content || ''
     }));
-    const aiContent = await callArk([...recentHistory, { role: 'user', content: message }], systemPrompt);
-    return parseAIResponse(aiContent);
+    const aiContent = await callRelay([
+      { role: 'system', content: systemPrompt },
+      ...recentHistory,
+      { role: 'user', content: message }
+    ]);
+    const parsed = parseAIResponse(aiContent);
+    if (parsed.reply) {
+      const safe = await checkText(parsed.reply, OPENID);
+      if (!safe) {
+        return {
+          reply: '这条回复里有不合适的内容，我换一种说法。',
+          action: parsed.action || null,
+          quickReplies: parsed.quickReplies || []
+        };
+      }
+    }
+    return parsed;
   } catch (err) {
     console.error('chat error:', err);
     return {
