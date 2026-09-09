@@ -1,5 +1,5 @@
 const store = require('../../utils/store.js');
-const subConfig = require('../../utils/subscribe-config.js');
+const subscribe = require('../../utils/subscribe.js');
 
 const ICONS = [
   {key:'fitness',emoji:'🏋️'},{key:'book',emoji:'📖'},{key:'water',emoji:'💧'},
@@ -143,28 +143,25 @@ Page({
 
     persistPromise.then(() => {
       const finalId = isEdit ? this.data.habitId : (store.getHabits().slice(-1)[0] || {}).id;
+      const back = () => wx.navigateBack();
 
-      // 提醒相关走独立流程，不影响主保存结果
-      if (finalId) {
-        try {
-          if (!reminder && reminderChanged) {
-            store.removeReminderConfig(finalId).catch(() => {});
-          } else if (reminder) {
-            this._requestSubscribeAndSave({
-              id: finalId,
-              name: habit.name,
-              reminder: reminder,
-              frequency: habit.frequency,
-              weekdays: habit.weekdays
-            }).catch(() => {});
-          }
-        } catch (e) {
-          console.warn('reminder subflow failed', e);
-        }
+      if (finalId && reminder) {
+        // 订阅授权窗必须在本页还活着时弹，navigateBack 要等它走完，
+        // 否则页面已销毁、弹窗没有宿主，表现就是"什么都没发生"。
+        this._requestSubscribeAndSave({
+          id: finalId,
+          name: habit.name,
+          reminder: reminder,
+          frequency: habit.frequency,
+          weekdays: habit.weekdays
+        }).then(back, back);
+        return;
       }
 
-      // 主流程：保存成功就直接回上一页，用户无感等待
-      wx.navigateBack();
+      if (finalId && !reminder && reminderChanged) {
+        store.removeReminderConfig(finalId).catch(() => {});
+      }
+      back();
     }).catch(err => {
       console.error('habit save fail', err);
       wx.showToast({ title: '保存失败，请重试', icon: 'none' });
@@ -173,32 +170,14 @@ Page({
   },
 
   _requestSubscribeAndSave(habitLite) {
-    const tmplId = subConfig.REMINDER_TEMPLATE_ID;
-    if (!tmplId) {
-      // templateId 未配置：只写数据库不弹授权
-      console.warn('REMINDER_TEMPLATE_ID 未配置，跳过订阅授权');
-      return store.saveReminderConfig(habitLite, 0).catch(() => {});
-    }
-    return new Promise((resolve) => {
-      wx.requestSubscribeMessage({
-        tmplIds: [tmplId],
-        success: (res) => {
-          const status = res[tmplId];
-          const accepted = status === 'accept' ? subConfig.SUBSCRIBE_BATCH : 0;
-          store.saveReminderConfig(habitLite, accepted).then(() => {
-            if (accepted > 0) {
-              wx.showToast({ title: '提醒已开启', icon: 'success' });
-            } else {
-              wx.showToast({ title: '提醒时间已保存，但需授权后才能推送', icon: 'none' });
-            }
-            resolve();
-          }).catch(() => { resolve(); });
-        },
-        fail: () => {
-          // 用户拒绝或未开权限：仍然写入 reminders 但 quota=0
-          store.saveReminderConfig(habitLite, 0).finally(() => resolve());
+    return subscribe.refillWithGuide().then((accepted) => {
+      return store.saveReminderConfig(habitLite).then(() => {
+        if (accepted > 0) {
+          wx.showToast({ title: '提醒已开启', icon: 'success' });
+        } else {
+          wx.showToast({ title: '提醒时间已保存，但需授权后才能推送', icon: 'none' });
         }
       });
-    });
+    }).catch(() => {});
   }
 });

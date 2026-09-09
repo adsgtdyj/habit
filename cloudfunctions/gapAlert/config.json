@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "openapi": [
+      "subscribeMessage.send"
+    ]
+  },
+  "timeout": 30,
+  "memorySize": 256,
+  "triggers": [
+    {
+      "name": "gapAlertTimer",
+      "type": "timer",
+      "config": "0 30 19 * * * *"
+    }
+  ]
+}

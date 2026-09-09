@@ -1,5 +1,6 @@
-// 把用户设置的提醒时间 upsert 到 reminders 集合，同时叠加订阅额度 quota
+// 把用户设置的提醒时间 upsert 到 reminders 集合
 // 也支持 delete: true 场景用来在删除习惯 / 清空提醒时清理
+// 订阅额度不在这里记账——额度是「用户 × 模板」维度的，见 subscribeQuota 云函数
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -7,11 +8,10 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   if (!OPENID) return { ok: false, error: 'no openid' };
 
-  const { habitId, habitName, time, frequency, weekdays, addQuota, del } = event || {};
+  const { habitId, habitName, time, frequency, weekdays, del } = event || {};
   if (!habitId) return { ok: false, error: 'missing habitId' };
 
   const db = cloud.database();
-  const _ = db.command;
   const col = db.collection('reminders');
 
   // 用 openid + habitId 作为唯一键去 upsert
@@ -40,9 +40,6 @@ exports.main = async (event) => {
       weekdays: Array.isArray(weekdays) ? weekdays : (doc.weekdays || []),
       updatedAt: now
     };
-    if (addQuota && addQuota > 0) {
-      patch.quota = _.inc(addQuota);
-    }
     await col.doc(doc._id).update({ data: patch });
     return { ok: true, updated: true, docId: doc._id };
   } else {
@@ -54,7 +51,6 @@ exports.main = async (event) => {
         time: time,
         frequency: frequency || 'daily',
         weekdays: Array.isArray(weekdays) ? weekdays : [],
-        quota: addQuota && addQuota > 0 ? addQuota : 0,
         createdAt: now,
         updatedAt: now
       }

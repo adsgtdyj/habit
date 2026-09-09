@@ -1,6 +1,6 @@
 const { TAB_MAP } = require('../../utils/constants.js');
 const store = require('../../utils/store.js');
-const subConfig = require('../../utils/subscribe-config.js');
+const subscribe = require('../../utils/subscribe.js');
 
 const DUO_MESSAGES = {
   warm: [
@@ -67,6 +67,8 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 });
     }
+    // 活跃期尽量囤额度留给空窗期消费；未勾「总是保持以上选择」时内部会自己跳过
+    subscribe.refillSilently();
     const app = getApp();
     if (app.globalData.loggedIn) {
       this._refreshData();
@@ -352,21 +354,9 @@ Page({
 
   _maybeRefillSubscribeQuota(habit) {
     if (!habit || !habit.reminder) return;
-    const tmplId = subConfig.REMINDER_TEMPLATE_ID;
-    if (!tmplId) return;
     // 用 setTimeout 让打卡成功动效先展示出来，再弹订阅授权
     setTimeout(() => {
-      wx.requestSubscribeMessage({
-        tmplIds: [tmplId],
-        success: (res) => {
-          const status = res[tmplId];
-          const accepted = status === 'accept' ? subConfig.SUBSCRIBE_BATCH : 0;
-          if (accepted > 0) {
-            store.saveReminderConfig(habit, accepted).catch(() => {});
-          }
-        },
-        fail: () => {}
-      });
+      subscribe.refillWithGuide();
     }, 1500);
   },
 

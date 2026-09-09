@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#fdf8ee"/>
+  <path d="M96 168 L416 164" stroke="#e2d8c6" stroke-width="5"/>
+  <path d="M96 300 L416 296" stroke="#e2d8c6" stroke-width="5"/>
+  <path d="M96 432 L416 428" stroke="#e2d8c6" stroke-width="5"/>
+  <path d="M132 122 L372 114" stroke="#1c1917" stroke-width="30" stroke-linecap="round"/>
+  <path d="M254 120 L248 400" stroke="#1c1917" stroke-width="32" stroke-linecap="round"/>
+  <path d="M138 244 L250 238" stroke="#1c1917" stroke-width="28" stroke-linecap="round"/>
+  <path d="M142 244 L136 398" stroke="#1c1917" stroke-width="28" stroke-linecap="round"/>
+  <path d="M126 400 L386 392" stroke="#1c1917" stroke-width="32" stroke-linecap="round"/>
+  <rect x="352" y="330" width="104" height="104" rx="14" fill="#dc2626" transform="rotate(-8 404 382)"/>
+  <text x="404" y="400" transform="rotate(-8 404 382)" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="66" font-weight="bold" fill="#ffffff" text-anchor="middle">卡</text></svg>

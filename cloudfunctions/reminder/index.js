@@ -5,6 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const TEMPLATE_ID = (process.env.REMINDER_TEMPLATE_ID || '').trim();
 const MINI_PROGRAM_STATE = process.env.MINI_PROGRAM_STATE || 'formal'; // formal / trial / developer
+const QUOTA_CHANNEL = 'reminder'; // 额度按模板独立成池，见 subscribe_quota.totals
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -55,6 +56,29 @@ async function getUserData(db, openid) {
   }
 }
 
+// 同一用户可能有多条到点提醒，缓存一次读取避免重复查库
+async function loadTotals(db, cache, openid) {
+  if (cache.has(openid)) return cache.get(openid);
+  let totals = {};
+  try {
+    const res = await db.collection('subscribe_quota').doc(openid).get();
+    totals = (res.data && res.data.totals) || {};
+  } catch (e) {}
+  cache.set(openid, totals);
+  return totals;
+}
+
+async function setQuota(db, cache, openid, value) {
+  const totals = await loadTotals(db, cache, openid);
+  totals[QUOTA_CHANNEL] = Math.max(0, value);
+  cache.set(openid, totals);
+  try {
+    await db.collection('subscribe_quota').doc(openid).update({
+      data: { totals: totals, updatedAt: Date.now() }
+    });
+  } catch (e) {}
+}
+
 exports.main = async () => {
   if (!TEMPLATE_ID) {
     console.error('缺少 REMINDER_TEMPLATE_ID 环境变量');
@@ -62,7 +86,6 @@ exports.main = async () => {
   }
 
   const db = cloud.database();
-  const _ = db.command;
   const col = db.collection('reminders');
 
   const hm = nowHM();
@@ -70,15 +93,13 @@ exports.main = async () => {
   const today = todayStr();
 
   const res = await col
-    .where({
-      time: hm,
-      quota: _.gt(0)
-    })
+    .where({ time: hm })
     .limit(500)
     .get();
 
   const items = res.data || [];
   const results = [];
+  const quotaCache = new Map();
 
   for (const item of items) {
     // custom 频率需匹配周几
@@ -88,6 +109,13 @@ exports.main = async () => {
     }
     // 今天已经推过就跳过
     if (item.lastPushedDate === today) continue;
+
+    const totals = await loadTotals(db, quotaCache, item._openid);
+    const left = totals[QUOTA_CHANNEL] || 0;
+    if (left <= 0) {
+      results.push({ id: item._id, skipped: 'no_quota' });
+      continue;
+    }
 
     // 拉用户数据算 streak，同时判断今天是否已经打卡
     const userData = await getUserData(db, item._openid);
@@ -116,17 +144,23 @@ exports.main = async () => {
           thing3: { value: streak > 0 ? `连胜${streak}天，别断啦` : '开个头，今天就打卡' }
         }
       });
+      await setQuota(db, quotaCache, item._openid, left - 1);
       await col.doc(item._id).update({
-        data: {
-          quota: _.inc(-1),
-          lastPushedDate: today,
-          lastPushedAt: Date.now()
-        }
+        data: { lastPushedDate: today, lastPushedAt: Date.now() }
       });
       results.push({ id: item._id, ok: true, streak });
     } catch (err) {
-      console.error('push fail', item._id, err && err.errMsg);
-      results.push({ id: item._id, ok: false, err: err && (err.errMsg || err.message) });
+      const code = err && (err.errCode || err.code);
+      const msg = String((err && (err.errMsg || err.message)) || code || 'unknown');
+      console.error('push fail', item._id, code, msg);
+      // 43101 = 用户未订阅或额度已耗尽：记账值已经失真，清零，否则每天都会被重新扫到
+      if (code === 43101) await setQuota(db, quotaCache, item._openid, 0);
+      try {
+        await col.doc(item._id).update({
+          data: { lastPushedDate: today, lastFailedAt: Date.now(), lastFailedErr: msg.slice(0, 200) }
+        });
+      } catch (e) {}
+      results.push({ id: item._id, ok: false, err: msg });
     }
   }
 

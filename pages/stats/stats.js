@@ -113,36 +113,81 @@ Page({
   },
 
   onImportData() {
+    wx.getClipboardData({
+      success: (r) => {
+        const text = (r.data || '').trim();
+        if (!text) {
+          wx.showToast({ title: '剪贴板为空', icon: 'none' });
+          return;
+        }
+        // 大数据包在手机上一次粘不完，支持带 "HABIT i/n" 头的分块粘贴
+        const head = /^HABIT\s+(\d+)\s*\/\s*(\d+)\r?\n/.exec(text);
+        if (head) {
+          this._collectImportChunk(Number(head[1]), Number(head[2]), text.slice(head[0].length));
+          return;
+        }
+        this._confirmAndImport(text);
+      },
+      fail: () => wx.showToast({ title: '读取剪贴板失败', icon: 'none' })
+    });
+  },
+
+  _collectImportChunk(index, total, body) {
+    const KEY = 'habit_import_chunks';
+    let buf = null;
+    try { buf = wx.getStorageSync(KEY) || null; } catch (e) {}
+    // 粘第 1 块视为重新开始，避免上一次没粘完的残留混进来
+    if (index === 1 || !buf || buf.total !== total) buf = { total: total, parts: {} };
+    buf.parts[index] = body;
+    try { wx.setStorageSync(KEY, buf); } catch (e) {}
+
+    const missing = [];
+    for (let i = 1; i <= total; i++) {
+      if (typeof buf.parts[i] !== 'string') missing.push(i);
+    }
+    if (missing.length) {
+      wx.showModal({
+        title: '已收到第 ' + index + ' / ' + total + ' 块',
+        content: '还缺第 ' + missing.join('、') + ' 块。复制下一块后再点一次导入。',
+        showCancel: false,
+        confirmText: '继续'
+      });
+      return;
+    }
+
+    let joined = '';
+    for (let i = 1; i <= total; i++) joined += buf.parts[i];
+    try { wx.removeStorageSync(KEY); } catch (e) {}
+    this._confirmAndImport(joined.trim());
+  },
+
+  _confirmAndImport(text) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (e) {
+      wx.showModal({
+        title: '不是合法 JSON',
+        content: '共 ' + text.length + ' 字符。若是分块粘贴，请确认每块都完整、顺序没错，然后从第 1 块重新粘一次。',
+        showCancel: false
+      });
+      return;
+    }
+    const summary = '习惯 ' + ((parsed.habits || []).length) +
+      ' 个，打卡 ' + ((parsed.checkins || []).length) + ' 条。';
     wx.showModal({
-      title: '从剪贴板导入',
-      content: '将读取剪贴板里的 JSON 数据并覆盖当前数据，此操作不可撤销，确定继续？',
-      confirmText: '继续',
+      title: '确认导入',
+      content: summary + '将覆盖当前数据，此操作不可撤销。',
+      confirmText: '导入',
       confirmColor: '#6366f1',
       success: (res) => {
         if (!res.confirm) return;
-        wx.getClipboardData({
-          success: (r) => {
-            const text = (r.data || '').trim();
-            if (!text) {
-              wx.showToast({ title: '剪贴板为空', icon: 'none' });
-              return;
-            }
-            let parsed;
-            try { parsed = JSON.parse(text); } catch (e) {
-              wx.showToast({ title: '不是合法 JSON', icon: 'none' });
-              return;
-            }
-            wx.showLoading({ title: '导入中...', mask: true });
-            store.importData(parsed).then(() => {
-              wx.hideLoading();
-              wx.showToast({ title: '导入成功', icon: 'success' });
-              this._refreshData();
-            }).catch((err) => {
-              wx.hideLoading();
-              wx.showToast({ title: err.message || '导入失败', icon: 'none' });
-            });
-          },
-          fail: () => wx.showToast({ title: '读取剪贴板失败', icon: 'none' })
+        wx.showLoading({ title: '导入中...', mask: true });
+        store.importData(parsed).then(() => {
+          wx.hideLoading();
+          wx.showToast({ title: '导入成功', icon: 'success' });
+          this._refreshData();
+        }).catch((err) => {
+          wx.hideLoading();
+          wx.showToast({ title: err.message || '导入失败', icon: 'none' });
         });
       }
     });
@@ -176,6 +221,10 @@ Page({
         });
       }
     });
+  },
+
+  onPrivacy() {
+    wx.navigateTo({ url: '/pages/privacy/privacy' });
   },
 
   onAbout() {
@@ -235,26 +284,13 @@ Page({
       success: (res) => {
         const filePath = res.tempFiles && res.tempFiles[0] && res.tempFiles[0].tempFilePath;
         if (!filePath) return;
-        wx.showLoading({ title: '上传中...', mask: true });
-        const openid = getApp().globalData.openid || 'anon';
-        const cloudPath = 'avatars/' + openid + '_' + Date.now() + '.jpg';
-        const oldAvatar = this.data.editAvatar;
-        wx.cloud.uploadFile({
-          cloudPath: cloudPath,
+        wx.getFileSystemManager().readFile({
           filePath: filePath,
-          success: (up) => {
-            wx.hideLoading();
-            const fileID = up.fileID;
-            this.setData({ editAvatar: fileID, editAvatarIsImage: true });
-            wx.showToast({ title: '头像已更新', icon: 'success' });
-            if (oldAvatar && typeof oldAvatar === 'string' && oldAvatar.indexOf('cloud://') === 0) {
-              try { wx.cloud.deleteFile({ fileList: [oldAvatar] }); } catch (e) {}
-            }
-          },
+          encoding: 'base64',
+          success: (fr) => this._doAvatarUpload(filePath, fr.data, res.tempFiles[0].size),
           fail: (err) => {
-            wx.hideLoading();
-            console.error('avatar upload fail:', err);
-            wx.showToast({ title: '上传失败：' + (err.errMsg || '未知错误'), icon: 'none', duration: 2500 });
+            console.error('read avatar file fail:', err);
+            wx.showToast({ title: '读取图片失败', icon: 'none' });
           }
         });
       },
@@ -263,6 +299,55 @@ Page({
           console.error('chooseMedia fail:', err);
           wx.showToast({ title: '选择图片失败', icon: 'none' });
         }
+      }
+    });
+  },
+
+  _doAvatarUpload(filePath, base64, size) {
+    if (size > 1024 * 1024) {
+      wx.showToast({ title: '图片不能超过 1MB，请压缩后再试', icon: 'none', duration: 2500 });
+      return;
+    }
+    wx.showLoading({ title: '上传中...', mask: true });
+    wx.cloud.callFunction({
+      name: 'security',
+      data: { action: 'checkImage', imageBase64: base64 }
+    }).then((r) => {
+      const res = (r && r.result) || {};
+      if (res.ok && res.pass === false) {
+        wx.hideLoading();
+        wx.showToast({ title: '图片不合适，请换一张', icon: 'none', duration: 2500 });
+        return;
+      }
+      if (!res.ok) console.error('imgSecCheck service error:', res.error);
+      this._uploadAvatar(filePath);
+    }).catch((err) => {
+      wx.hideLoading();
+      console.error('security checkImage fail:', err);
+      this._uploadAvatar(filePath);
+    });
+  },
+
+  _uploadAvatar(filePath) {
+    const openid = getApp().globalData.openid || 'anon';
+    const cloudPath = 'avatars/' + openid + '_' + Date.now() + '.jpg';
+    const oldAvatar = this.data.editAvatar;
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: filePath,
+      success: (up) => {
+        wx.hideLoading();
+        const fileID = up.fileID;
+        this.setData({ editAvatar: fileID, editAvatarIsImage: true });
+        wx.showToast({ title: '头像已更新', icon: 'success' });
+        if (oldAvatar && typeof oldAvatar === 'string' && oldAvatar.indexOf('cloud://') === 0) {
+          try { wx.cloud.deleteFile({ fileList: [oldAvatar] }); } catch (e) {}
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        console.error('avatar upload fail:', err);
+        wx.showToast({ title: '上传失败：' + (err.errMsg || '未知错误'), icon: 'none', duration: 2500 });
       }
     });
   },

@@ -1,0 +1,70 @@
+<view class="page">
+  <view class="status-pad" style="height:{{statusH}}"></view>
+  <scroll-view class="body" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <view class="section">
+      <view class="h1">AI 成长助理 隐私保护指引</view>
+      <view class="updated">最近更新：2026-08-11</view>
+
+      <view class="h2">一、我们收集哪些信息</view>
+      <view class="p">为了提供习惯打卡、AI 教练对话与数据分析服务，本小程序会在你主动使用相关功能时收集以下信息：</view>
+      <view class="li">1. 账号标识：微信 OpenID（用于在你的设备与云端之间对应数据，不包含你的微信号、手机号或聊天内容）。</view>
+      <view class="li">2. 个人资料：你在「我的」页主动填写的昵称、头像、座右铭；以及你自己维护的健身档案文本（身高、体重、围度、训练目标等）。</view>
+      <view class="li">3. 习惯与打卡数据：你创建的习惯、每日打卡记录、训练备注、计划子项、连续天数等。</view>
+      <view class="li">4. 教练对话记录：你与 AI 教练的对话内容（用于让对话有上下文）。</view>
+      <view class="li">5. 设备权限：当你使用「上传头像」时申请相册/相机权限；使用「语音输入」时申请麦克风权限。权限仅在你主动操作时按需触发，你不授予不影响其他功能。</view>
+
+      <view class="h2">二、我们如何使用这些信息</view>
+      <view class="li">· 在你登录的设备上展示习惯打卡、日历、分析图表和教练对话。</view>
+      <view class="li">· 将你的昵称、健身档案、近 7 天打卡情况作为上下文发送给大模型服务商（火山引擎 Ark）生成 AI 教练回复。</view>
+      <view class="li">· 通过微信订阅消息按你设置的时间发送提醒（订阅消息为一次性授权，配额用完不再提醒）。</view>
+      <view class="li">· 用于内容安全检测（接入微信内容安全接口，过滤 AI 输出与你上传的头像图片中的违规内容）。</view>
+
+      <view class="h2">三、信息存储与共享</view>
+      <view class="p">你的数据存储在微信云开发（CloudBase）数据库与云存储中，按你的微信 OpenID 隔离，仅你本人可读写。我们不会向任何第三方出售你的个人信息。</view>
+      <view class="li">· 火山引擎 Ark：仅接收 AI 对话请求中必要的上下文文本，用于生成回复，遵循其隐私政策。</view>
+      <view class="li">· 微信内容安全接口：接收待检测的文本片段或图片，用于违规判定。</view>
+      <view class="li">· 除此之外，我们不会将你的数据共享给其他第三方。</view>
+
+      <view class="h2">四、你的权利</view>
+      <view class="li">· 查询与导出：在「我的 - 导出数据」可一键导出你的全部数据为 JSON 文件。</view>
+      <view class="li">· 删除：在「我的 - 清除所有数据」可清空你账号下的全部习惯与打卡记录。卸载小程序不会自动删除云端数据，需要你主动操作。</view>
+      <view class="li">· 撤回授权：在微信「设置 - 隐私 - 授权管理」可撤回相册、麦克风等授权。</view>
+
+      <view class="h2">五、信息安全</view>
+      <view class="p">我们采取合理的技术措施保护你的数据，包括按 OpenID 严格隔离、云函数权限管控、不硬编码密钥。但请注意，互联网传输无法保证 100% 安全。AI 教练的回复由大模型生成，可能存在错误或不合适的内容，请理性判断。</view>
+
+      <view class="h2">六、未成年人</view>
+      <view class="p">本小程序主要面向成年人。未成年人应在监护人指导下使用，并确保已获得监护人对本隐私政策的同意。</view>
+
+      <view class="h2">七、本政策的更新</view>
+      <view class="p">本政策可能根据业务发展或法规要求更新。更新后我们会在本页面公示，不再单独通知。继续使用即视为同意更新后的政策。</view>
+
+      <view class="h2">八、联系我们</view>
+      <view class="p">如对本政策有任何疑问，可在「我的 - 关于」中查看开发者联系方式。</view>
+    </view>
+
+    <view class="section">
+      <view class="h1">用户协议</view>
+      <view class="h2">1. 服务说明</view>
+      <view class="p">「AI 成长助理」是一款习惯打卡与 AI 教练辅助工具，不提供医疗、心理或营养学专业建议。AI 教练的回复仅供参考，不构成任何专业意见。</view>
+
+      <view class="h2">2. 使用规范</view>
+      <view class="li">· 你应合法、合规地使用本服务，不得利用本服务从事违法或侵犯他人权益的活动。</view>
+      <view class="li">· 你不得上传或输入违法、有害、胁迫、骚扰、暴恐、色情等内容。我们通过内容安全接口对 AI 输出与你上传的图片进行检测，违规内容将被拦截。</view>
+      <view class="li">· 你对自己输入的内容（如健身档案、训练备注）负责。</view>
+
+      <view class="h2">3. 免责声明</view>
+      <view class="p">在法律允许的范围内，我们不对因使用或无法使用本服务造成的损失承担责任。AI 生成的训练建议若涉及具体动作、重量、次数，请结合自身情况判断，必要时咨询专业教练或医生。</view>
+
+      <view class="h2">4. 协议变更</view>
+      <view class="p">本协议可能更新，更新后继续使用即视为接受。如不同意，你可以停止使用并按上文方式清空数据。</view>
+    </view>
+
+    <view style="height:80rpx"></view>
+  </scroll-view>
+
+  <view class="back-bar">
+    <view class="back-btn" bindtap="onBack">返回</view>
+  </view>
+</view>

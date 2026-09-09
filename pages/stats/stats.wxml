@@ -51,6 +51,7 @@
         <view class="setting-item" bindtap="onExportData"><view class="label"><view class="si upload"></view>导出数据</view><view class="arrow">›</view></view>
         <view class="setting-item" bindtap="onImportData"><view class="label"><view class="si download"></view>导入数据</view><view class="arrow">›</view></view>
         <view class="setting-item" bindtap="onClearData"><view class="label" style="color:#ef4444"><view class="si trash"></view>清除所有数据</view><view class="arrow">›</view></view>
+        <view class="setting-item" bindtap="onPrivacy"><view class="label"><view class="si shield"></view>隐私与条款</view><view class="arrow">›</view></view>
         <view class="setting-item" bindtap="onAbout"><view class="label"><view class="si info"></view>关于 v13</view><view class="arrow">›</view></view>
       </view>
     </view>

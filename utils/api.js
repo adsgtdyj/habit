@@ -58,6 +58,10 @@ function saveChat(messages) {
   });
 }
 
+function refillSubscribeQuota(channels) {
+  return callFn('subscribeQuota', { action: 'refill', channels: channels || [] });
+}
+
 module.exports = {
-  getData, putData, sendChat, saveReminder, getChat, saveChat
+  getData, putData, sendChat, saveReminder, getChat, saveChat, refillSubscribeQuota
 };

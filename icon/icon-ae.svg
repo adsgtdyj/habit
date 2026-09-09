@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#fdf8ee"/>
+  <path d="M92 150 L420 146" stroke="#e4dac7" stroke-width="5"/>
+  <path d="M92 282 L420 278" stroke="#e4dac7" stroke-width="5"/>
+  <path d="M92 414 L420 410" stroke="#e4dac7" stroke-width="5"/>
+  <text x="238" y="360" transform="rotate(-3 238 280)" font-family="Microsoft YaHei, PingFang SC, Heiti SC, sans-serif" font-size="300" font-weight="bold" fill="#1c1917" text-anchor="middle">教</text>
+  <rect x="348" y="330" width="110" height="110" rx="14" fill="#dc2626" transform="rotate(-8 403 385)"/>
+  <text x="403" y="404" transform="rotate(-8 403 385)" font-family="Microsoft YaHei, PingFang SC, Heiti SC, sans-serif" font-size="70" font-weight="bold" fill="#ffffff" text-anchor="middle">练</text></svg>

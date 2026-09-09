@@ -1,7 +1,7 @@
 {
-  "description": "AI成长助理 - 扫码登录中转小程序",
+  "description": "AI成长助理 - 习惯打卡与 AI 私教",
   "appid": "wx80ae23bfa51c5348",
-  "projectname": "habit-login",
+  "projectname": "habit-miniprogram",
   "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": true,
@@ -27,15 +27,20 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "ignoreUploadUnusedFiles": false
+    "ignoreUploadUnusedFiles": true
   },
   "compileType": "miniprogram",
   "libVersion": "latest",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "icon" },
+      { "type": "folder", "value": "smoke" },
+      { "type": "folder", "value": "import-chunks" },
+      { "type": "suffix", "value": ".md" },
+      { "type": "file", "value": "habit-import-fitness.json" }
+    ],
     "include": []
   },
-  "editorSetting": {},
-  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
+  "editorSetting": {}
 }

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bgC)"/>
+
+  <!-- 上升柱状：成长趋势 -->
+  <rect x="120" y="300" width="58" height="96" rx="24" fill="#ffffff" opacity="0.45"/>
+  <rect x="200" y="252" width="58" height="144" rx="24" fill="#ffffff" opacity="0.65"/>
+  <rect x="280" y="196" width="58" height="200" rx="24" fill="#ffffff" opacity="0.85"/>
+
+  <!-- 顶部对勾：完成 -->
+  <path d="M336 168 L372 204 L432 132" fill="none" stroke="#fde047" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

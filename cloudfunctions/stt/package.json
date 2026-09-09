@@ -4,6 +4,6 @@
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3",
-    "ws": "^8.16.0"
+    "tencentcloud-sdk-nodejs-asr": "^4.0.0"
   }
 }

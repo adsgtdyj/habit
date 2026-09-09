@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#facc15"/>
+  <text x="58" y="132" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="58" font-weight="bold" letter-spacing="14" fill="#18181b">DAY</text>
+  <path d="M58 168 L454 168" stroke="#18181b" stroke-width="12"/>
+  <text x="46" y="402" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="264" font-weight="bold" fill="#18181b">30</text>
+  <rect x="340" y="286" width="118" height="118" rx="26" fill="#18181b"/>
+  <path d="M368 344 L392 370 L432 320" fill="none" stroke="#facc15" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/></svg>

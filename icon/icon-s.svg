@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#fff6e9"/>
+  
+  <g transform="translate(126 402) rotate(-18)" fill="#1c1917" opacity="0.28">
+    <ellipse cx="0" cy="16" rx="34" ry="46"/>
+    <circle cx="-24" cy="-38" r="12"/>
+    <circle cx="-4" cy="-48" r="13"/>
+    <circle cx="18" cy="-44" r="12"/>
+    <circle cx="36" cy="-30" r="10"/>
+  </g>
+  
+  <g transform="translate(214 316) rotate(-14)" fill="#1c1917" opacity="0.5">
+    <ellipse cx="0" cy="16" rx="34" ry="46"/>
+    <circle cx="-24" cy="-38" r="12"/>
+    <circle cx="-4" cy="-48" r="13"/>
+    <circle cx="18" cy="-44" r="12"/>
+    <circle cx="36" cy="-30" r="10"/>
+  </g>
+  
+  <g transform="translate(302 230) rotate(-10)" fill="#1c1917" opacity="0.75">
+    <ellipse cx="0" cy="16" rx="34" ry="46"/>
+    <circle cx="-24" cy="-38" r="12"/>
+    <circle cx="-4" cy="-48" r="13"/>
+    <circle cx="18" cy="-44" r="12"/>
+    <circle cx="36" cy="-30" r="10"/>
+  </g>
+  
+  <g transform="translate(392 142) rotate(-6)" fill="#ea580c" opacity="1">
+    <ellipse cx="0" cy="16" rx="34" ry="46"/>
+    <circle cx="-24" cy="-38" r="12"/>
+    <circle cx="-4" cy="-48" r="13"/>
+    <circle cx="18" cy="-44" r="12"/>
+    <circle cx="36" cy="-30" r="10"/>
+  </g></svg>

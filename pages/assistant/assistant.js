@@ -311,6 +311,15 @@ Page({
       this._stopPending = false;
       this._resetVoiceUI();
       const msg = (err && err.errMsg) || '';
+      if (msg.indexOf('not declared') > -1) {
+        // errno 112：后台隐私指引没声明麦克风，是开发者侧配置问题，不是用户设置问题
+        wx.showModal({
+          title: '语音功能未开通',
+          content: '小程序后台「用户隐私保护指引」未声明麦克风，请在 mp 后台补充声明并提交审核。',
+          showCancel: false
+        });
+        return;
+      }
       if (msg.indexOf('auth') > -1 || msg.indexOf('deny') > -1 || msg.indexOf('privacy') > -1) {
         wx.showModal({
           title: '需要麦克风权限',
@@ -437,7 +446,7 @@ Page({
             this.setData({ voiceUploading: false });
             console.error('stt fail:', err);
             const msg = (err && err.errMsg) || '';
-            let tip = 'stt 云函数调用失败。请确认已部署 stt 云函数，并配置了 VOLC_ASR_APP_ID / VOLC_ASR_ACCESS_TOKEN 环境变量。';
+            let tip = 'stt 云函数调用失败。请确认已部署 stt 云函数，并配置了 TENCENT_SECRET_ID / TENCENT_SECRET_KEY 环境变量。';
             if (msg.indexOf('-504003') > -1 || msg.indexOf('timed out') > -1) {
               tip = '语音识别超时。请到云开发后台把 stt 云函数超时时间从 3 秒调到 30 秒以上。';
             }

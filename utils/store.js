@@ -282,14 +282,13 @@ function deleteHabit(habitId) {
   return saveToServer();
 }
 
-function saveReminderConfig(habit, addQuota) {
+function saveReminderConfig(habit) {
   return api.saveReminder({
     habitId: habit.id,
     habitName: habit.name,
     time: habit.reminder,
     frequency: habit.frequency || 'daily',
-    weekdays: habit.weekdays || [],
-    addQuota: addQuota || 0
+    weekdays: habit.weekdays || []
   });
 }
 
