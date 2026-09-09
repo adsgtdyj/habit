@@ -14,7 +14,7 @@ Page({
     toneLabel: '默认',
     toneTagline: '教练在线，陪你把计划落到今天',
     welcomeText: '嘿，又是新的一天！点击上方快捷按钮，或者直接告诉我你想做什么——打卡、查计划、看数据，我都在。',
-    // 语音输入开关：依赖 stt 云函数（已实现，需配置 VOLC_ASR_* 环境变量）
+    // 语音输入开关：依赖 stt 云函数（腾讯云一句话识别，需配置 TENCENT_SECRET_ID / TENCENT_SECRET_KEY 环境变量）
     voiceEnabled: true,
     // 语音输入
     voiceMode: false,

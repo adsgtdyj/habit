@@ -44,6 +44,7 @@ exports.main = async (event) => {
     const resp = await getClient().SentenceRecognition({
       ProjectId: 0,
       SubServiceType: 0,
+      SourceType: 0, // 0 = 音频以 base64 放在 Data 字段（必填，漏了报 missing parameter SourceType）
       EngineModelType: '16k_zh',
       EngSerViceType: '16k_zh',
       VoiceFormat: 4, // mp3
