@@ -45,11 +45,11 @@ exports.main = async (event) => {
       ProjectId: 0,
       SubServiceType: 0,
       SourceType: 0, // 0 = 音频以 base64 放在 Data 字段（必填，漏了报 missing parameter SourceType）
-      EngineModelType: '16k_zh',
-      EngSerViceType: '16k_zh',
+      EngSerViceType: '16k_zh', // 引擎类型（一句话识别只有 EngSerViceType；EngineModelType 是录音文件识别接口的参数，传了会报 not recognized）
       VoiceFormat: 4, // mp3
       FilterModal: '1',
-      Data: buffer.toString('base64')
+      Data: buffer.toString('base64'),
+      DataLen: buffer.length // SourceType=0 时必填：base64 编码前的音频字节数
     });
     console.log('asr response', JSON.stringify(resp).slice(0, 800));
 
