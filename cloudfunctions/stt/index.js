@@ -44,12 +44,12 @@ exports.main = async (event) => {
     const resp = await getClient().SentenceRecognition({
       ProjectId: 0,
       SubServiceType: 0,
-      SourceType: 0, // 0 = 音频以 base64 放在 Data 字段（必填，漏了报 missing parameter SourceType）
+      SourceType: 1, // 1 = 语音数据放在 post body（Data 字段）；0 是 URL 模式（传 0 服务端会报 need param 'Url'）
       EngSerViceType: '16k_zh', // 引擎类型（一句话识别只有 EngSerViceType；EngineModelType 是录音文件识别接口的参数，传了会报 not recognized）
       VoiceFormat: 'mp3', // 字符串格式的格式名（新版校验报 VoiceFormat: 4 not in list: [mp3,wav,pcm,...]，编码数字已不被接受）
       FilterModal: 1, // 过滤语气词（int64，和 VoiceFormat 的 string 反着来，别统一）
       Data: buffer.toString('base64'),
-      DataLen: buffer.length // SourceType=0 时必填：base64 编码前的音频字节数
+      DataLen: buffer.length // base64 编码前的音频字节数
     });
     console.log('asr response', JSON.stringify(resp).slice(0, 800));
 
