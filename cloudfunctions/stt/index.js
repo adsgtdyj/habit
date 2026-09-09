@@ -46,7 +46,7 @@ exports.main = async (event) => {
       SubServiceType: 0,
       SourceType: 0, // 0 = 音频以 base64 放在 Data 字段（必填，漏了报 missing parameter SourceType）
       EngSerViceType: '16k_zh', // 引擎类型（一句话识别只有 EngSerViceType；EngineModelType 是录音文件识别接口的参数，传了会报 not recognized）
-      VoiceFormat: 4, // mp3
+      VoiceFormat: '4', // mp3（必须是字符串，传数字报 value type not valid）
       FilterModal: '1',
       Data: buffer.toString('base64'),
       DataLen: buffer.length // SourceType=0 时必填：base64 编码前的音频字节数
