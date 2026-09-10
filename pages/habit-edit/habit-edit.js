@@ -139,9 +139,11 @@ Page({
 
     // 微信限制：订阅授权窗必须由用户点击同步触发（报错 can only be invoked by
     // user TAP gesture 的根源）。所以先发起授权，再做保存，最后一起收尾。
+    // 时间没改时走静默补额度：已勾「总是保持」的用户静默成功且 toast 正确，
+    // 未勾的用户静默失败不弹窗（不打扰）。
     const subPromise = (reminder && reminderChanged)
       ? subscribe.refillOnTap()
-      : Promise.resolve(0);
+      : (reminder ? subscribe.refillSilently() : Promise.resolve(0));
 
     const persistPromise = isEdit
       ? store.updateHabit(this.data.habitId, habit)
