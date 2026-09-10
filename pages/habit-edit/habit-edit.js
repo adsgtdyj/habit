@@ -137,6 +137,12 @@ Page({
     const oldHabit = isEdit ? store.getHabits().find(h => h.id === this.data.habitId) : null;
     const reminderChanged = !oldHabit || oldHabit.reminder !== reminder;
 
+    // 微信限制：订阅授权窗必须由用户点击同步触发（报错 can only be invoked by
+    // user TAP gesture 的根源）。所以先发起授权，再做保存，最后一起收尾。
+    const subPromise = (reminder && reminderChanged)
+      ? subscribe.refillOnTap()
+      : Promise.resolve(0);
+
     const persistPromise = isEdit
       ? store.updateHabit(this.data.habitId, habit)
       : store.addHabit(habit);
@@ -148,13 +154,21 @@ Page({
       if (finalId && reminder) {
         // 订阅授权窗必须在本页还活着时弹，navigateBack 要等它走完，
         // 否则页面已销毁、弹窗没有宿主，表现就是"什么都没发生"。
-        this._requestSubscribeAndSave({
+        const habitLite = {
           id: finalId,
           name: habit.name,
           reminder: reminder,
           frequency: habit.frequency,
           weekdays: habit.weekdays
-        }).then(back, back);
+        };
+        Promise.all([subPromise, store.saveReminderConfig(habitLite)]).then(([accepted]) => {
+          if (accepted > 0) {
+            wx.showToast({ title: '提醒已开启', icon: 'success' });
+          } else {
+            wx.showToast({ title: '已保存，授权后教练才能推送提醒', icon: 'none' });
+          }
+          setTimeout(back, 600);
+        }, back);
         return;
       }
 
@@ -167,17 +181,5 @@ Page({
       wx.showToast({ title: '保存失败，请重试', icon: 'none' });
       this.setData({ saving: false });
     });
-  },
-
-  _requestSubscribeAndSave(habitLite) {
-    return subscribe.refillWithGuide().then((accepted) => {
-      return store.saveReminderConfig(habitLite).then(() => {
-        if (accepted > 0) {
-          wx.showToast({ title: '提醒已开启', icon: 'success' });
-        } else {
-          wx.showToast({ title: '提醒时间已保存，但需授权后才能推送', icon: 'none' });
-        }
-      });
-    }).catch(() => {});
   }
 });

@@ -1,5 +1,11 @@
 // 订阅额度的前端侧：额度只能靠用户前台交互换取，云端发不出来。
 // 所以这里负责"在用户活跃时把额度攒进 subscribe_quota"，云函数负责消费。
+//
+// ⚠️ 微信硬性限制：wx.requestSubscribeMessage 只能由用户点击（TAP）的同步调用链触发。
+// 在 wx.showModal 回调、setTimeout、Promise.then 之后再调用，必报
+// "can only be invoked by user TAP gesture"。所以：
+//   - 授权入口只有 refillOnTap()，必须在按钮 tap 处理函数的第一行同步调用
+//   - 操作引导文案放在授权成功之后弹（那时不再需要手势上下文）
 const subConfig = require('./subscribe-config.js');
 const api = require('./api.js');
 
@@ -39,7 +45,8 @@ function getAlwaysKeep() {
   });
 }
 
-function request() {
+// silent=true 用于非点击场景（如 onShow）：授权弹不出来时不打扰用户，只记日志。
+function request(silent) {
   const chans = channels();
   if (!chans.length) return Promise.resolve(0);
   return new Promise((resolve) => {
@@ -55,54 +62,56 @@ function request() {
           })
           .catch(() => resolve(accepted.length));
       },
-      // 上架前保留可见报错：静默 fail 会让"弹窗没出现"完全无法定位
       fail: (err) => {
         const code = (err && (err.errCode || err.errno)) || '';
         const msg = (err && err.errMsg) || '';
         console.error('requestSubscribeMessage fail', code, msg, err);
         try { wx.setStorageSync('habit_subscribe_last_error', { code: code, msg: msg, at: Date.now() }); } catch (e) {}
-        wx.showModal({
-          title: '订阅授权没能弹出',
-          content: 'errCode: ' + code + '\n' + msg,
-          showCancel: false,
-          confirmText: '知道了'
-        });
+        if (!silent) {
+          wx.showModal({
+            title: '提醒授权没弹出来',
+            content: '再点一次「保存」或「打卡」就能弹出。若反复失败，请把这条信息发给开发者：' + (msg || code || '未知错误'),
+            showCancel: false,
+            confirmText: '好的'
+          });
+        }
         resolve(0);
       }
     });
   });
 }
 
-// 打卡后 / 设提醒后调用：会弹授权窗。
-// 第一次先讲清为什么要勾「总是保持以上选择」——不勾，后面所有额度策略都是死的。
-// 注意不要在这之前插入 wx.getSetting 之类的异步调用：requestSubscribeMessage
-// 离用户手势越远越容易被判定为非主动触发而直接 fail。
-function refillWithGuide() {
-  let guided = false;
-  try { guided = !!wx.getStorageSync(GUIDE_FLAG_KEY); } catch (e) {}
-  if (guided) return request();
-  return new Promise((resolve) => {
-    wx.showModal({
-      title: '让教练能提醒你',
-      content: '下一步的授权窗里请勾选「总是保持以上选择」。勾了之后，你连续几天没出现时教练才能主动提醒一次。',
-      confirmText: '知道了',
-      showCancel: false,
-      complete: () => {
-        try { wx.setStorageSync(GUIDE_FLAG_KEY, 1); } catch (e) {}
-        request().then(resolve);
-      }
-    });
+// 订阅授权入口：必须在按钮 tap 的同步调用链里调用（onSave / onCheckinConfirm 第一行）。
+// 授权成功后，首次给一段看得懂的说明（原来放在授权前的引导弹窗会打断手势链，已废）。
+function refillOnTap() {
+  return request(false).then((accepted) => {
+    if (accepted > 0) maybeFirstGuide();
+    return accepted;
   });
 }
 
-// 回到首页时调用：只在用户已勾「总是保持以上选择」时静默补额度，
-// 否则会变成每次进小程序都弹窗，是最容易被卸载的形态。
+function maybeFirstGuide() {
+  let guided = false;
+  try { guided = !!wx.getStorageSync(GUIDE_FLAG_KEY); } catch (e) {}
+  if (guided) return;
+  try { wx.setStorageSync(GUIDE_FLAG_KEY, 1); } catch (e) {}
+  wx.showModal({
+    title: '提醒已开启',
+    content: '连续几天没打卡时，教练会主动发消息提醒你。如果刚才勾选了「总是保持以上选择」，以后打卡会自动补充提醒次数，不用再授权。',
+    showCancel: false,
+    confirmText: '好的'
+  });
+}
+
+// 回到首页时调用：只在用户已勾「总是保持以上选择」时静默补额度。
+// 注意：即使勾了，requestSubscribeMessage 在 onShow（非点击）里也可能被微信拒绝，
+// 此时静默失败不弹窗，额度会在下一次打卡/保存时补上。
 function refillSilently() {
   const chans = channels();
   if (!chans.length) return Promise.resolve(0);
   const totals = readTotals();
   if (chans.every(c => (totals[c.name] || 0) >= subConfig.QUOTA_CAP)) return Promise.resolve(0);
-  return getAlwaysKeep().then(alwaysKeep => (alwaysKeep ? request() : 0));
+  return getAlwaysKeep().then(alwaysKeep => (alwaysKeep ? request(true) : 0));
 }
 
-module.exports = { getAlwaysKeep, refillWithGuide, refillSilently, readTotals };
+module.exports = { getAlwaysKeep, refillOnTap, refillSilently, readTotals };

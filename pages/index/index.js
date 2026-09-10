@@ -239,16 +239,14 @@ Page({
       }
       return;
     }
+    // 微信限制：订阅授权窗必须由用户点击同步触发（setTimeout/回调后再调会报
+    // can only be invoked by user TAP gesture），所以先弹授权，再走打卡流程。
+    const subPromise = checkinHabit.reminder ? subscribe.refillOnTap() : Promise.resolve(0);
     store.toggleCheckin(checkinHabit.id, (checkinNote || '').trim(), checkinSelectedItems || []).then(() => {
       this.setData({ checkinVisible: false });
       this._refreshData();
       this._showCheckinSuccess(checkinHabit.id);
-      // 方案A：打卡后补一次订阅额度。放独立 try，避免拖累打卡主流程
-      try {
-        this._maybeRefillSubscribeQuota(checkinHabit);
-      } catch (e) {
-        console.warn('refill quota failed', e);
-      }
+      subPromise.catch(() => {});
     }).catch((err) => {
       console.error('checkin fail', err);
       wx.showToast({ title: '打卡失败', icon: 'none' });
@@ -351,14 +349,6 @@ Page({
   },
 
   _noopTap() {},
-
-  _maybeRefillSubscribeQuota(habit) {
-    if (!habit || !habit.reminder) return;
-    // 用 setTimeout 让打卡成功动效先展示出来，再弹订阅授权
-    setTimeout(() => {
-      subscribe.refillWithGuide();
-    }, 1500);
-  },
 
   // 每日首次打开：弹打卡引导（按提醒时间+当前时间筛当日未打卡习惯）
   _maybeShowReminderPrompt() {
