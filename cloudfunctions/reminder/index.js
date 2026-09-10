@@ -155,9 +155,11 @@ exports.main = async () => {
       console.error('push fail', item._id, code, msg);
       // 43101 = 用户未订阅或额度已耗尽：记账值已经失真，清零，否则每天都会被重新扫到
       if (code === 43101) await setQuota(db, quotaCache, item._openid, 0);
+      // 失败不写 lastPushedDate：瞬时错误（如 invalid access_token）下一分钟自动重试；
+      // 只留 lastFailedErr 供排查。若失败也写 lastPushedDate，一次抖动就烧掉当天全部重试。
       try {
         await col.doc(item._id).update({
-          data: { lastPushedDate: today, lastFailedAt: Date.now(), lastFailedErr: msg.slice(0, 200) }
+          data: { lastFailedAt: Date.now(), lastFailedErr: msg.slice(0, 200) }
         });
       } catch (e) {}
       results.push({ id: item._id, ok: false, err: msg });
