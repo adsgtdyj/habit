@@ -3,6 +3,7 @@
 // 定时触发器建议北京时间每天 19:30 —— 人还在、当天还来得及做点什么。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const wxapi = require('./wxapi.js');
 
 const TEMPLATE_ID = (process.env.GAP_TEMPLATE_ID || '').trim();
 const MINI_PROGRAM_STATE = process.env.MINI_PROGRAM_STATE || 'formal';
@@ -66,17 +67,33 @@ exports.main = async () => {
 
     try {
       // 字段名 = 关键词类型 + 在模板里的序号，顺序为 上次训练内容 / 未打卡天数 / 训练建议
-      await cloud.openapi.subscribeMessage.send({
-        touser: item._openid || item._id,
-        templateId: TEMPLATE_ID,
-        page: 'pages/index/index',
-        miniprogramState: MINI_PROGRAM_STATE,
-        data: {
-          thing1: { value: String(item.lastCheckinName || '训练').slice(0, 20) },
-          number2: { value: gap },
-          thing3: { value: ADVICE[hit] || ADVICE[3] }
-        }
-      });
+      // 双路径：配了 WX_APPID/WX_SECRET 时走 HTTPS 直连（绕开云调用 -501001 故障）
+      if (wxapi.directConfigured()) {
+        await wxapi.sendSubscribeMessage({
+          touser: item._openid || item._id,
+          template_id: TEMPLATE_ID,
+          page: 'pages/index/index',
+          miniprogram_state: MINI_PROGRAM_STATE,
+          lang: 'zh_CN',
+          data: {
+            thing1: { value: String(item.lastCheckinName || '训练').slice(0, 20) },
+            number2: { value: gap },
+            thing3: { value: ADVICE[hit] || ADVICE[3] }
+          }
+        });
+      } else {
+        await cloud.openapi.subscribeMessage.send({
+          touser: item._openid || item._id,
+          templateId: TEMPLATE_ID,
+          page: 'pages/index/index',
+          miniprogramState: MINI_PROGRAM_STATE,
+          data: {
+            thing1: { value: String(item.lastCheckinName || '训练').slice(0, 20) },
+            number2: { value: gap },
+            thing3: { value: ADVICE[hit] || ADVICE[3] }
+          }
+        });
+      }
       totals[QUOTA_CHANNEL] = Math.max(0, left - 1);
       await col.doc(item._id).update({
         data: {
@@ -88,7 +105,7 @@ exports.main = async () => {
       });
       results.push({ id: item._id, ok: true, gap: gap, step: hit });
     } catch (err) {
-      const code = err && (err.errCode || err.code);
+      const code = err && (err.errCode || err.errcode || err.code);
       const msg = String((err && (err.errMsg || err.message)) || code || 'unknown');
       console.error('gap push fail', item._id, code, msg);
       // 43101 = 用户未订阅或额度已耗尽，记账值失真，清零

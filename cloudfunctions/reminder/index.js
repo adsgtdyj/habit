@@ -2,6 +2,7 @@
 // 微信云函数定时触发器每分钟触发一次
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const wxapi = require('./wxapi.js');
 
 const TEMPLATE_ID = (process.env.REMINDER_TEMPLATE_ID || '').trim();
 const MINI_PROGRAM_STATE = process.env.MINI_PROGRAM_STATE || 'formal'; // formal / trial / developer
@@ -132,25 +133,43 @@ exports.main = async () => {
     const streak = calcStreak(checkins, item.habitId);
 
     try {
-      await cloud.openapi.subscribeMessage.send({
-        touser: item._openid,
-        templateId: TEMPLATE_ID,
-        page: 'pages/index/index',
-        miniprogramState: MINI_PROGRAM_STATE,
-        data: {
-          thing1: { value: (item.habitName || '习惯').slice(0, 20) },
-          time7: { value: item.time },
-          number11: { value: streak },
-          thing3: { value: streak > 0 ? `连胜${streak}天，别断啦` : '开个头，今天就打卡' }
-        }
-      });
+      // 双路径：配了 WX_APPID/WX_SECRET 时走 HTTPS 直连（绕开云调用 -501001 故障），
+      // 否则回退 cloud.openapi 云调用
+      if (wxapi.directConfigured()) {
+        await wxapi.sendSubscribeMessage({
+          touser: item._openid,
+          template_id: TEMPLATE_ID,
+          page: 'pages/index/index',
+          miniprogram_state: MINI_PROGRAM_STATE,
+          lang: 'zh_CN',
+          data: {
+            thing1: { value: (item.habitName || '习惯').slice(0, 20) },
+            time7: { value: item.time },
+            number11: { value: streak },
+            thing3: { value: streak > 0 ? `连胜${streak}天，别断啦` : '开个头，今天就打卡' }
+          }
+        });
+      } else {
+        await cloud.openapi.subscribeMessage.send({
+          touser: item._openid,
+          templateId: TEMPLATE_ID,
+          page: 'pages/index/index',
+          miniprogramState: MINI_PROGRAM_STATE,
+          data: {
+            thing1: { value: (item.habitName || '习惯').slice(0, 20) },
+            time7: { value: item.time },
+            number11: { value: streak },
+            thing3: { value: streak > 0 ? `连胜${streak}天，别断啦` : '开个头，今天就打卡' }
+          }
+        });
+      }
       await setQuota(db, quotaCache, item._openid, left - 1);
       await col.doc(item._id).update({
         data: { lastPushedDate: today, lastPushedAt: Date.now() }
       });
       results.push({ id: item._id, ok: true, streak });
     } catch (err) {
-      const code = err && (err.errCode || err.code);
+      const code = err && (err.errCode || err.errcode || err.code);
       const msg = String((err && (err.errMsg || err.message)) || code || 'unknown');
       console.error('push fail', item._id, code, msg);
       // 43101 = 用户未订阅或额度已耗尽：记账值已经失真，清零，否则每天都会被重新扫到
