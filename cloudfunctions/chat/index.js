@@ -137,22 +137,87 @@ action 类型：
 4. 只有真正输出了对应 action，才可以说"已帮你打卡""已建好习惯"这类话。做不到就绝不能假装完成——要么给出正确 action，要么如实说明还缺什么信息。
 5. 用户要建习惯但没说清名称/频率时，先问清楚再建，不要凭空乱建。
 6. 你只能做上面列出的 5 种 action。其他需求--例如"建一条备注/笔记/日志"、"修改打卡记录"、"删除习惯"、"改用户资料"、"查历史统计"、"导出数据"--你都没有对应 action，必须如实告诉用户去哪个页面手动操作（例如"在我的-数据管理里导出"），绝不能假装做完。
-7. 当用户想跳转到某个页面（例如去建习惯、看日历、看分析），用 redirect action。`;
+7. 当用户想跳转到某个页面（例如去建习惯、看日历、看分析），用 redirect action。
+8. 一次只允许输出一个 action。用户想同时做多件事（例如补两个打卡）时，只对最重要的那一个输出 action，并在 reply 里自然地引导处理另一件（例如"拉伸那条你回一句'拉伸补上'，我马上记"）。绝不输出两个 action，也绝不解释"系统限制""一次只能带一个"这类内部机制。
+9. 你的输出必须是一个合法 JSON 对象：从 { 到 } 之外不能有任何文字、markdown 或代码围栏；reply 字段内部不要包含 JSON 片段、反引号或星号加粗。`;
+}
+
+// 展示层清理：去 markdown 加粗符号、旧版 [action:] 残留、
+// 模型在 reply 值里连带输出的协议尾部（如 ","action":{...} / ","quickReplies":[...]）
+function cleanDisplay(s) {
+  let out = String(s);
+  out = out.replace(/\s*,\s*\\?"action\\?"\s*:\s*\{[\s\S]*$/, '');
+  out = out.replace(/\s*,\s*\\?"quickReplies\\?"\s*:\s*\[[\s\S]*$/, '');
+  out = out.replace(/\*\*/g, '');
+  out = out.replace(/\[action:[^\]]*\]/g, '');
+  return out.trim();
+}
+
+function normalizeParsed(p) {
+  return {
+    reply: cleanDisplay(p.reply),
+    action: p.action || null,
+    quickReplies: Array.isArray(p.quickReplies) ? p.quickReplies : []
+  };
+}
+
+// 从散文中截取第一个配平的 JSON 对象（模型常在 JSON 前后夹解释文字）
+function extractJsonObject(text) {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function unescapeJsonString(s) {
+  return s.replace(/\\n/g, '\n').replace(/\\t/g, ' ').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
 }
 
 function parseAIResponse(content) {
+  const raw = String(content || '');
+  // 1) 整体即合法 JSON
   try {
-    const parsed = JSON.parse(content);
-    if (parsed.reply) return { reply: parsed.reply, action: parsed.action || null, quickReplies: parsed.quickReplies || [] };
+    const parsed = JSON.parse(raw.trim());
+    if (parsed && parsed.reply) return normalizeParsed(parsed);
   } catch (e) {}
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
+  // 2) ```json 围栏包裹
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) {
     try {
-      const parsed = JSON.parse(jsonMatch[1].trim());
-      if (parsed.reply) return { reply: parsed.reply, action: parsed.action || null, quickReplies: parsed.quickReplies || [] };
+      const parsed = JSON.parse(fence[1].trim());
+      if (parsed && parsed.reply) return normalizeParsed(parsed);
     } catch (e) {}
   }
-  return { reply: content.replace(/\[action:.*?\]/g, '').trim(), action: null, quickReplies: [] };
+  // 3) 截取散文中第一个配平的 JSON 对象（模型夹带解释文字的常见形态）
+  const objStr = extractJsonObject(raw);
+  if (objStr) {
+    try {
+      const parsed = JSON.parse(objStr);
+      if (parsed && parsed.reply) return normalizeParsed(parsed);
+    } catch (e) {}
+  }
+  // 4) JSON 已残缺时，正则抠出 reply 字段值做兜底
+  const m = raw.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m) {
+    return normalizeParsed({ reply: unescapeJsonString(m[1]) });
+  }
+  // 5) 纯文本兜底：只清协议残留与 markdown 符号
+  return normalizeParsed({ reply: raw });
 }
 
 function callRelay(messages) {
