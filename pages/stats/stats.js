@@ -323,7 +323,13 @@ Page({
       fail: (err) => {
         if (err && err.errMsg && err.errMsg.indexOf('cancel') === -1) {
           console.error('chooseMedia fail:', err);
-          wx.showToast({ title: '选择图片失败', icon: 'none' });
+          // 透出真实错误：隐私声明缺失时报 "api scope is not declared in the privacy agreement"
+          const msg = (err.errMsg || '').replace('chooseMedia:fail ', '');
+          wx.showModal({
+            title: '选择图片失败',
+            content: msg || '未知原因',
+            showCancel: false
+          });
         }
       }
     });
