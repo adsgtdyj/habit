@@ -3,6 +3,7 @@ const http = require('http');
 const { URL } = require('url');
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const wxapi = require('./wxapi.js');
 
 // AI 调用统一走 WorkTrace Relay 网关（方案 A）
 // 网关接口：POST {RELAY_BASE_URL}/api/v3/chat/completions，请求头 X-Invite-Code 携带 Habit tab 签发的邀请码
@@ -212,6 +213,13 @@ async function checkText(content, openid) {
   const text = String(content).trim();
   if (!text || text.length > 2500) return true;
   try {
+    // 双路径：配了 WX_APPID/WX_SECRET 走 HTTPS 直连（绕开云调用 -501001 故障）
+    if (wxapi.directConfigured()) {
+      const res = await wxapi.msgSecCheckV2({
+        content: text, version: 2, scene: 2, openid: openid || ''
+      });
+      return !((res.result || {}).suggest === 'risky');
+    }
     const res = await cloud.openapi.security.msgSecCheck({
       content: text,
       version: 2,
@@ -220,7 +228,7 @@ async function checkText(content, openid) {
     });
     return !(res && res.result && res.result.suggest === 'risky');
   } catch (e) {
-    console.error('msgSecCheck error:', e.errMsg || e);
+    console.error('msgSecCheck error:', e.errMsg || e.message || e);
     return true;
   }
 }

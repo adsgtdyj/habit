@@ -47,6 +47,37 @@ function httpsPostJson(url, payload) {
   });
 }
 
+// imgSecCheck 要求 multipart/form-data（media 文件字段）
+function httpsPostMultipart(url, filename, contentType, buffer) {
+  return new Promise((resolve, reject) => {
+    const boundary = '----wxapiBoundary' + Date.now();
+    const head = Buffer.from(
+      '--' + boundary + '\r\n' +
+      'Content-Disposition: form-data; name="media"; filename="' + filename + '"\r\n' +
+      'Content-Type: ' + contentType + '\r\n\r\n'
+    );
+    const tail = Buffer.from('\r\n--' + boundary + '--\r\n');
+    const body = Buffer.concat([head, buffer, tail]);
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/form-data; boundary=' + boundary, 'Content-Length': body.length }
+    }, (res) => {
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => (raw += c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)); } catch (e) { reject(new Error('非JSON响应: ' + raw.slice(0, 200))); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 async function getAccessToken() {
   const now = Date.now();
   if (cache.token && now < cache.expiresAt) return cache.token;
@@ -63,30 +94,55 @@ async function getAccessToken() {
   return cache.token;
 }
 
-// 发送订阅消息（payload 为微信官方 HTTPS 接口的 snake_case 格式）。
-// token 失效（40001/40014/42001）自动刷新重试一次；业务错误（如 43101）原样抛出。
-async function sendSubscribeMessage(payload) {
+// 带 token 的 POST，token 失效（40001/40014/42001）自动刷新重试一次
+async function postWithToken(pathname, payload) {
   const token = await getAccessToken();
-  const res = await httpsPostJson(
-    'https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=' + token,
-    payload
-  );
-  if (res.errcode === 0) return res;
+  let res = await httpsPostJson('https://api.weixin.qq.com' + pathname + '?access_token=' + token, payload);
   if ([40001, 40014, 42001].includes(res.errcode)) {
     cache = { token: '', expiresAt: 0 };
     const token2 = await getAccessToken();
-    const res2 = await httpsPostJson(
-      'https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=' + token2,
-      payload
-    );
-    if (res2.errcode === 0) return res2;
-    const e = new Error('subscribe send errcode ' + res2.errcode + ': ' + (res2.errmsg || ''));
-    e.errcode = res2.errcode;
-    throw e;
+    res = await httpsPostJson('https://api.weixin.qq.com' + pathname + '?access_token=' + token2, payload);
   }
-  const e = new Error('subscribe send errcode ' + res.errcode + ': ' + (res.errmsg || ''));
+  return res;
+}
+
+function throwApiError(res, apiName) {
+  const e = new Error(apiName + ' errcode ' + res.errcode + ': ' + (res.errmsg || ''));
   e.errcode = res.errcode;
-  throw e;
+  return e;
+}
+
+// 发送订阅消息（payload 为微信官方 HTTPS 接口的 snake_case 格式）
+async function sendSubscribeMessage(payload) {
+  const res = await postWithToken('/cgi-bin/message/subscribe/send', payload);
+  if (res.errcode === 0) return res;
+  throw throwApiError(res, 'subscribe send');
+}
+
+// 文本内容安全 v2：payload {content, version:2, scene:2, openid}
+// 返回 {errcode:0, result:{suggest:'pass'|'risky'|..., label}}
+async function msgSecCheckV2(payload) {
+  const res = await postWithToken('/wxa/msg_sec_check', payload);
+  if (res.errcode !== 0) throw throwApiError(res, 'msg_sec_check');
+  return res;
+}
+
+// 图片内容安全 v1：buffer <= 1MB。errcode 0=合规，87014=内容违规
+async function imgSecCheck(buffer) {
+  const token = await getAccessToken();
+  let res = await httpsPostMultipart(
+    'https://api.weixin.qq.com/wxa/img_sec_check?access_token=' + token,
+    'a.png', 'image/png', buffer
+  );
+  if ([40001, 40014, 42001].includes(res.errcode)) {
+    cache = { token: '', expiresAt: 0 };
+    const token2 = await getAccessToken();
+    res = await httpsPostMultipart(
+      'https://api.weixin.qq.com/wxa/img_sec_check?access_token=' + token2,
+      'a.png', 'image/png', buffer
+    );
+  }
+  return res; // {errcode:0|87014|..., errMsg}
 }
 
 // 是否已配置直连（未配置时调用方回退 cloud.openapi 旧路径）
@@ -94,4 +150,4 @@ function directConfigured() {
   return !!(APPID && SECRET);
 }
 
-module.exports = { directConfigured, sendSubscribeMessage };
+module.exports = { directConfigured, sendSubscribeMessage, msgSecCheckV2, imgSecCheck };

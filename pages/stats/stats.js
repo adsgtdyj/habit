@@ -192,7 +192,24 @@ Page({
         wx.showLoading({ title: '导入中...', mask: true });
         store.importData(parsed).then(() => {
           wx.hideLoading();
-          wx.showToast({ title: '导入成功', icon: 'success' });
+          // 补注册提醒：导入只写习惯数据，reminders 集合需要 saveReminder 单独注册，
+          // 否则导入的习惯界面显示有提醒、云端到点却不推。逐个错开 300ms 避免并发冲击。
+          const withReminder = (parsed.habits || []).filter(h => h.reminder);
+          withReminder.forEach((h, i) => {
+            setTimeout(() => {
+              store.saveReminderConfig({
+                id: h.id,
+                name: h.name,
+                reminder: h.reminder,
+                frequency: h.frequency || 'daily',
+                weekdays: h.weekdays || []
+              }).catch((e) => console.warn('import register reminder fail', h.id, e));
+            }, i * 300);
+          });
+          wx.showToast({
+            title: withReminder.length ? `导入成功，已注册${withReminder.length}个提醒` : '导入成功',
+            icon: 'none'
+          });
           this._refreshData();
         }).catch((err) => {
           wx.hideLoading();
