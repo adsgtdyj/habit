@@ -447,10 +447,18 @@ function sendChatMessage(message) {
       { role: 'assistant', content: response.reply, time: new Date().toISOString() }
     );
     // Process action
+    // 打卡/取消打卡属于对用户事实数据的写入，AI 可能幻觉编造（线上已发生），
+    // 不再自动执行：标记 pendingConfirm 交给前端弹确认按钮，用户点「确认」
+    // 才真正写入。其余 action（建习惯/改计划/跳转）保持自动执行。
+    const CONFIRM_TYPES = ['checkin', 'cancel_checkin'];
     let dataChanged = false;
     if (response.action) {
-      processAction(response.action);
-      dataChanged = true;
+      if (CONFIRM_TYPES.indexOf(response.action.type) !== -1) {
+        response.pendingConfirm = true;
+      } else {
+        processAction(response.action);
+        dataChanged = true;
+      }
     }
     // Trim history — 保持与 UPLOAD_LIMITS.chatHistory 一致
     if (data.chatHistory.length > UPLOAD_LIMITS.chatHistory) {
@@ -461,6 +469,14 @@ function sendChatMessage(message) {
     if (dataChanged) saves.push(saveToServer());
     return Promise.all(saves).then(() => response);
   });
+}
+
+// 用户在聊天页对 pendingConfirm 的 action 点了「确认」后调用：
+// 此时写入是用户明示同意的，执行并持久化。
+function executeConfirmedAction(action) {
+  if (!data) return Promise.reject(new Error('Data not loaded'));
+  processAction(action);
+  return saveToServer();
 }
 
 function processAction(action) {
@@ -633,6 +649,7 @@ module.exports = {
   updateSettings,
   resetData, importData,
   sendChatMessage,
+  executeConfirmedAction,
   saveReminderConfig, removeReminderConfig,
   todayStr,
   __stressTest

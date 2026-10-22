@@ -161,7 +161,17 @@ Page({
       .filter(c => c.habitId === habitId)
       .sort((a, b) => b.date.localeCompare(a.date));
     if (checkins.length === 0) return '暂无记录';
-    return '昨日记：' + (checkins[0].note || '无备注');
+    const last = checkins[0];
+    // 标签用真实日期，不预设"昨天"——上次记录可能是任何一天
+    let label;
+    if (last.date === store.todayStr()) {
+      label = '今日记';
+    } else {
+      const m = Number(last.date.slice(5, 7));
+      const d = Number(last.date.slice(8, 10));
+      label = '上次记(' + m + '月' + d + '日)';
+    }
+    return label + '：' + (last.note || '无备注');
   },
 
   _fmtDate() {

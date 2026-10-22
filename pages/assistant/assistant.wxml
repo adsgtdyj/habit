@@ -62,8 +62,12 @@
             <view class="dot"></view><view class="dot"></view><view class="dot"></view>
           </view>
           <!-- Action 按钮 -->
-          <view class="msg-actions" wx:if="{{item.action}}">
-            <view class="msg-action-btn" wx:if="{{item.action.type === 'checkin'}}">已打卡</view>
+          <view class="msg-actions" wx:if="{{item.action && (item.action.type === 'checkin' || item.action.type === 'cancel_checkin')}}">
+            <block wx:if="{{item.pendingConfirm}}">
+              <view class="msg-action-btn confirm" bindtap="onConfirmCheckin" data-index="{{index}}">{{item.action.type === 'checkin' ? '确认打卡' : '确认取消打卡'}}</view>
+              <view class="msg-action-btn" bindtap="onDismissCheckin" data-index="{{index}}">忽略</view>
+            </block>
+            <view class="msg-action-btn done" wx:elif="{{item.confirmed}}">已打卡</view>
           </view>
           <!-- 快捷回复 -->
           <view class="msg-actions" wx:if="{{item.quickReplies && item.quickReplies.length > 0}}">

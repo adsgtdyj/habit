@@ -176,11 +176,13 @@ Page({
         content: response.reply,
         time: this._fmtTime(new Date().toISOString()),
         action: response.action || null,
+        // 打卡/取消打卡不自动执行（防 AI 幻觉编造），等用户点确认
+        pendingConfirm: !!response.pendingConfirm,
         quickReplies: response.quickReplies || []
       });
       this.setData({ messages: finalMessages, sending: false });
       this._scrollToBottom();
-      // redirect 类 action：自动跳转到对应页面（store 已处理 checkin/plan_update/create_habit）
+      // redirect 类 action：自动跳转到对应页面（checkin 现走确认流，plan_update/create_habit 仍自动）
       this._maybeRedirect(response.action);
     }).catch(err => {
       const errorMessages = this.data.messages.filter(m => !m.pending);
@@ -192,6 +194,37 @@ Page({
       });
       this.setData({ messages: errorMessages, sending: false });
     });
+  },
+
+  // ===== AI 打卡确认流 =====
+  // 教练返回的 checkin/cancel_checkin 需用户明示确认后才写入（防幻觉假打卡）
+  onConfirmCheckin(e) {
+    const idx = e.currentTarget.dataset.index;
+    const msg = this.data.messages[idx];
+    if (!msg || !msg.action || !msg.pendingConfirm) return;
+    const habitName = (msg.action.data && msg.action.data.habitId) || '';
+    wx.showLoading({ title: '正在打卡...', mask: true });
+    store.executeConfirmedAction(msg.action).then(() => {
+      wx.hideLoading();
+      const messages = this.data.messages.slice();
+      messages[idx] = Object.assign({}, msg, { pendingConfirm: false, confirmed: true });
+      this.setData({ messages: messages });
+      wx.showToast({ title: '已打卡', icon: 'success' });
+    }).catch((err) => {
+      wx.hideLoading();
+      console.error('confirm checkin fail', err);
+      wx.showToast({ title: '打卡失败，请重试', icon: 'none' });
+    });
+  },
+
+  onDismissCheckin(e) {
+    const idx = e.currentTarget.dataset.index;
+    const msg = this.data.messages[idx];
+    if (!msg || !msg.action || !msg.pendingConfirm) return;
+    const messages = this.data.messages.slice();
+    // 忽略：移除 action，不再显示确认按钮，也不执行
+    messages[idx] = Object.assign({}, msg, { action: null, pendingConfirm: false });
+    this.setData({ messages: messages });
   },
 
   onQuickReply(e) {

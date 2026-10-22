@@ -37,6 +37,8 @@
 .msg-time{font-size:22rpx;color:#94a3b8;margin-top:20rpx;font-weight:600}
 .msg-actions{display:flex;gap:16rpx;margin-top:24rpx;flex-wrap:wrap}
 .msg-action-btn{padding:16rpx 32rpx;border-radius:28rpx;border:4rpx solid #e2e8f0;background:#fff;color:#6366f1;font-size:26rpx;font-weight:700;white-space:nowrap}
+.msg-action-btn.confirm{background:#6366f1;border-color:#6366f1;color:#fff}
+.msg-action-btn.done{background:#f1f5f9;border-color:#f1f5f9;color:#94a3b8}
 .msg-user{font-size:28rpx;color:#6366f1;display:flex;align-items:flex-start;gap:16rpx;font-weight:700}
 .msg-avatar{width:60rpx;height:60rpx;border-radius:50%;flex:0 0 60rpx;background:linear-gradient(135deg,#6366f1,#ec4899);box-shadow:0 8rpx 28rpx rgba(99,102,241,0.22)}
 .msg-user-text{flex:1;min-width:0;line-height:1.6;padding-top:6rpx}
