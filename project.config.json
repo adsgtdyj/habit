@@ -34,13 +34,29 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "icon" },
-      { "type": "folder", "value": "smoke" },
-      { "type": "folder", "value": "import-chunks" },
-      { "type": "suffix", "value": ".md" },
-      { "type": "file", "value": "habit-import-fitness.json" }
+      {
+        "type": "folder",
+        "value": "icon"
+      },
+      {
+        "type": "folder",
+        "value": "smoke"
+      },
+      {
+        "type": "folder",
+        "value": "import-chunks"
+      },
+      {
+        "type": "suffix",
+        "value": ".md"
+      },
+      {
+        "type": "file",
+        "value": "habit-import-fitness.json"
+      }
     ],
     "include": []
   },
-  "editorSetting": {}
+  "editorSetting": {},
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }
