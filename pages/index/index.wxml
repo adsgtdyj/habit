@@ -129,11 +129,12 @@
       </view>
 
       <view class="note-wrap">
-        <input class="note-input"
+        <textarea class="note-input"
           placeholder="今天的感受、进度、小成就…（可选）"
           value="{{checkinNote}}"
-          maxlength="100"
+          maxlength="500"
           confirm-type="done"
+          auto-height
           bindinput="onCheckinNoteInput"/>
       </view>
 

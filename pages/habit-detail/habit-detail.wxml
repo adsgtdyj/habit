@@ -108,7 +108,7 @@
         <view class="date-value">{{makeupDate || '请选择日期'}}</view>
       </picker>
       <view class="makeup-label">备注内容</view>
-      <textarea class="note-input" value="{{makeupNote}}" bindinput="onMakeupNoteInput" placeholder="例如：今天补记录训练内容、阅读页数或完成情况" maxlength="120" auto-height></textarea>
+      <textarea class="note-input" value="{{makeupNote}}" bindinput="onMakeupNoteInput" placeholder="例如：今天补记录训练内容、阅读页数或完成情况" maxlength="500" auto-height></textarea>
       <view class="btn-confirm" bindtap="onMakeupConfirm">确认补签</view>
       <view class="btn-cancel" bindtap="onMakeupCancel">取消</view>
     </view>

@@ -4,6 +4,17 @@ const api = require('./api.js');
 let data = null;       // null until loaded from server
 const CACHE_KEY = 'habit_cache_v1';
 
+// ----- 读写竞态防护 -----
+// 冷启动时 loadFromServer 的 GET 在飞行中，用户若此刻打卡（本地写 + PUT），
+// GET 响应（不含新写的旧快照）回来会整体覆盖 data，把刚写的打卡无声抹掉——
+// 表现即"从服务通知/提醒弹窗进入后打卡无响应"。
+// 防护：记录最近一次本地写时间戳与在途保存数；GET 响应应用前检查，
+// 若 GET 发出后发生过本地写（或写仍在途），丢弃该响应（本地即最新全量，
+// 后续 PUT 会把状态收敛到云端），绝不回滚用户刚做的操作。
+let lastLocalWriteAt = 0;
+let saveInFlight = 0;
+function markLocalWrite() { lastLocalWriteAt = Date.now(); }
+
 // 数据刷新订阅：服务端数据回来后通知页面重渲染
 let refreshedCallbacks = [];
 function onRefreshed(cb) {
@@ -39,6 +50,8 @@ function getDefaultData() {
 }
 
 function getData() { return data || getDefaultData(); }
+// 数据是否已从缓存/云端载入（用于打卡前的就绪检查，避免在默认空数据上静默操作）
+function isLoaded() { return !!data; }
 function getHabits() { return getData().habits; }
 function getCheckins() { return getData().checkins; }
 function getSettings() { return getData().settings; }
@@ -170,7 +183,10 @@ function saveToServer() {
   };
   console.warn('[saveToServer] payload size', size, 'fields', fieldSizes);
 
-  return api.putData(uploadPayload);
+  // 竞态防护：标记本地写时刻 + 在途保存计数，供 loadFromServer 检查
+  markLocalWrite();
+  saveInFlight++;
+  return api.putData(uploadPayload).finally(() => { saveInFlight--; });
 }
 
 // 单独持久化聊天记录到独立集合 chat_history
@@ -200,12 +216,19 @@ function _saveToCache() {
 }
 
 function loadFromServer() {
+  const getDispatchedAt = Date.now();
   // getChat 失败（如尚未部署）不应阻断启动，降级为空聊天
   const chatP = api.getChat().catch(e => {
     console.warn('[loadFromServer] getChat failed, fallback empty:', e && (e.errMsg || e));
     return { messages: [] };
   });
   return Promise.all([api.getData(), chatP]).then(([res, chatRes]) => {
+    // 竞态防护：GET 发出后发生过本地写（打卡等）或保存仍在途——
+    // 该响应是不含新写的旧快照，直接应用会抹掉用户刚做的操作，丢弃。
+    if (lastLocalWriteAt > getDispatchedAt || saveInFlight > 0) {
+      console.warn('[loadFromServer] 丢弃旧快照响应（本地有更新的写入在途）');
+      return { data: data, skippedRace: true };
+    }
     if (res.needClaim) {
       data = getDefaultData();
       return { needClaim: true, openid: res.openid };
@@ -602,6 +625,7 @@ module.exports = {
   saveToServer,
   saveChat,
   onRefreshed,
+  isLoaded,
   getData, getHabits, getCheckins, getSettings, getChatHistory,
   addHabit, updateHabit, deleteHabit,
   isCheckedInToday, toggleCheckin, addCheckin, deleteCheckin,

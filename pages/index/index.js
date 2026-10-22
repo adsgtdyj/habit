@@ -224,43 +224,55 @@ Page({
   onCheckinConfirm() {
     const { checkinHabit, checkinNote, checkinIsDone, currentCheckinId, checkinSelectedItems } = this.data;
     if (!checkinHabit) return;
+    // 数据未就绪（冷启动瞬间）：明确提示而非静默失败
+    if (!store.isLoaded()) {
+      wx.showToast({ title: '数据加载中，稍等一秒再打卡', icon: 'none' });
+      return;
+    }
     if (checkinIsDone) {
-      // 更新备注 + 完成项
+      // 更新备注 + 完成项（乐观更新：本地同步改完立即反馈，云端保存后台进行）
       const data = store.getData();
       const c = data.checkins.find(x => x.id === currentCheckinId);
       if (c) {
         c.note = (checkinNote || '').trim();
         c.selectedItems = checkinSelectedItems || [];
+        this.setData({ checkinVisible: false });
+        this._refreshData();
         store.saveToServer().then(() => {
           wx.showToast({ title: '已更新', icon: 'success' });
-          this.setData({ checkinVisible: false });
-          this._refreshData();
-        }).catch(() => wx.showToast({ title: '保存失败', icon: 'none' }));
+        }).catch(() => wx.showToast({ title: '已保存到本机，云端同步失败', icon: 'none', duration: 2500 }));
       }
       return;
     }
     // 微信限制：订阅授权窗必须由用户点击同步触发（setTimeout/回调后再调会报
     // can only be invoked by user TAP gesture），所以先弹授权，再走打卡流程。
     const subPromise = checkinHabit.reminder ? subscribe.refillOnTap() : Promise.resolve(0);
-    store.toggleCheckin(checkinHabit.id, (checkinNote || '').trim(), checkinSelectedItems || []).then(() => {
-      this.setData({ checkinVisible: false });
-      this._refreshData();
-      this._showCheckinSuccess(checkinHabit.id);
-      subPromise.catch(() => {});
-    }).catch((err) => {
-      console.error('checkin fail', err);
-      wx.showToast({ title: '打卡失败', icon: 'none' });
+    // 乐观更新：toggleCheckin 的本地变更是同步完成的，UI 无需等 51KB 整包
+    // PUT 云端往返（1-3 秒）才反馈——立即关面板、刷新、播放动效，失败再提示。
+    const saveP = store.toggleCheckin(checkinHabit.id, (checkinNote || '').trim(), checkinSelectedItems || []);
+    this.setData({ checkinVisible: false });
+    this._refreshData();
+    this._showCheckinSuccess(checkinHabit.id);
+    saveP.catch((err) => {
+      console.error('checkin save fail', err);
+      wx.showToast({ title: '打卡已记录，云端同步失败', icon: 'none', duration: 2500 });
     });
+    subPromise.catch(() => {});
   },
 
   onCheckinUndo() {
     const { checkinHabit } = this.data;
     if (!checkinHabit) return;
-    store.toggleCheckin(checkinHabit.id, '').then(() => {
-      wx.showToast({ title: '已撤销今日打卡', icon: 'none' });
-      this.setData({ checkinVisible: false });
-      this._refreshData();
-    }).catch(() => wx.showToast({ title: '操作失败', icon: 'none' }));
+    if (!store.isLoaded()) {
+      wx.showToast({ title: '数据加载中，请稍后重试', icon: 'none' });
+      return;
+    }
+    const saveP = store.toggleCheckin(checkinHabit.id, '');
+    this._refreshData();
+    saveP.catch((err) => {
+      console.error('undo save fail', err);
+      wx.showToast({ title: '已取消，云端同步失败', icon: 'none', duration: 2500 });
+    });
   },
 
   onCheckinAskCoach() {
