@@ -1,6 +1,7 @@
 const { TAB_MAP } = require('../../utils/constants.js');
 const store = require('../../utils/store.js');
 const subscribe = require('../../utils/subscribe.js');
+const config = require('../../utils/config.js');
 
 const DUO_MESSAGES = {
   warm: [
@@ -27,6 +28,7 @@ const DUO_MESSAGES = {
 
 Page({
   data: {
+    aiEnabled: config.AI_ENABLED,
     statusH: '44px',
     loading: true,
     todayStr: '',

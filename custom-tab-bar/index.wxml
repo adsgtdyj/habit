@@ -1,24 +1,16 @@
 <view class="tab-bar">
-  <view class="tab-item {{selected===0?'active':''}}" data-key="index" bindtap="switchTab">
-    <view class="tab-icon check"></view>
-    <text>今日</text>
-  </view>
-  <view class="tab-item {{selected===1?'active':''}}" data-key="calendar" bindtap="switchTab">
-    <view class="tab-icon calendar"></view>
-    <text>日历</text>
-  </view>
-  <view class="tab-item coach-tab {{selected===2?'active':''}}" data-key="assistant" bindtap="switchTab">
-    <view class="coach-circle">
-      <view class="coach-icon"></view>
-      <text class="coach-label">教练</text>
+  <block wx:for="{{list}}" wx:key="key">
+    <!-- 教练 tab：凸起圆钮特殊样式 -->
+    <view wx:if="{{item.key === 'assistant'}}" class="tab-item coach-tab {{selected===item.fullIndex?'active':''}}" data-key="{{item.key}}" bindtap="switchTab">
+      <view class="coach-circle">
+        <view class="coach-icon"></view>
+        <text class="coach-label">教练</text>
+      </view>
     </view>
-  </view>
-  <view class="tab-item {{selected===3?'active':''}}" data-key="analytics" bindtap="switchTab">
-    <view class="tab-icon chart"></view>
-    <text>分析</text>
-  </view>
-  <view class="tab-item {{selected===4?'active':''}}" data-key="stats" bindtap="switchTab">
-    <view class="tab-icon user"></view>
-    <text>我的</text>
-  </view>
+    <!-- 普通 tab -->
+    <view wx:else class="tab-item {{selected===item.fullIndex?'active':''}}" data-key="{{item.key}}" bindtap="switchTab">
+      <view class="tab-icon {{item.iconClass}}"></view>
+      <text>{{item.text}}</text>
+    </view>
+  </block>
 </view>

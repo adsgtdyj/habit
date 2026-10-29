@@ -86,7 +86,7 @@
                 catchtap="onQuickCheckin" data-id="{{item.id}}">
                 {{item.checkedToday ? '已打卡' : '打卡'}}
               </view>
-              <view class="ai-link" catchtap="onAiLinkTap" data-id="{{item.id}}">问教练</view>
+              <view wx:if="{{aiEnabled}}" class="ai-link" catchtap="onAiLinkTap" data-id="{{item.id}}">问教练</view>
             </view>
           </view>
         </view>
@@ -147,7 +147,7 @@
         <view wx:if="{{checkinIsDone}}" class="btn-secondary btn-undo" bindtap="onCheckinUndo">撤销今日打卡</view>
 
         <view class="btn-row-2">
-          <view class="btn-ghost" bindtap="onCheckinAskCoach">问教练</view>
+          <view wx:if="{{aiEnabled}}" class="btn-ghost" bindtap="onCheckinAskCoach">问教练</view>
           <view class="btn-ghost" wx:if="{{!checkinIsDone}}" bindtap="onCheckinLater">稍后再说</view>
           <view class="btn-ghost" wx:else bindtap="onCheckinSkip">关闭</view>
         </view>

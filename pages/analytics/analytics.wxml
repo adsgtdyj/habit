@@ -98,10 +98,11 @@
       <!-- 记录与计划引导 -->
       <view class="analysis-guide">
         <view class="analysis-guide-title"><view class="ci info"></view>记录和计划放轻一点</view>
-        <view class="analysis-guide-text">历史打卡记录建议去日历里按日期查看；训练安排、阅读计划这类问题，直接问教练会更灵活。</view>
+        <view class="analysis-guide-text" wx:if="{{aiEnabled}}">历史打卡记录建议去日历里按日期查看；训练安排、阅读计划这类问题，直接问教练会更灵活。</view>
+        <view class="analysis-guide-text" wx:else>历史打卡记录建议去日历里按日期查看。</view>
         <view class="analysis-guide-actions">
           <view class="analysis-guide-btn" bindtap="onGoCalendar">看日历记录</view>
-          <view class="analysis-guide-btn primary" bindtap="onAskCoachPlan">问教练计划</view>
+          <view class="analysis-guide-btn primary" wx:if="{{aiEnabled}}" bindtap="onAskCoachPlan">问教练计划</view>
         </view>
       </view>
     </view>

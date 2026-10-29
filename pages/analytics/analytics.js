@@ -1,8 +1,10 @@
 const { TAB_MAP } = require('../../utils/constants.js');
 const store = require('../../utils/store.js');
+const config = require('../../utils/config.js');
 
 Page({
   data: {
+    aiEnabled: config.AI_ENABLED,
     statusH: '44px',
     active: 'analytics',
     loading: true,

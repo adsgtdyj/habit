@@ -1,5 +1,6 @@
 const { TAB_MAP } = require('../../utils/constants.js');
 const store = require('../../utils/store.js');
+const config = require('../../utils/config.js');
 
 Page({
   data: {
@@ -39,6 +40,11 @@ Page({
   },
 
   onShow() {
+    // 发布开关关闭（正式版）：AI 入口已隐藏，任何直达本页的路径一律送回首页
+    if (!config.AI_ENABLED) {
+      wx.switchTab({ url: '/pages/index/index' });
+      return;
+    }
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 });
     }
