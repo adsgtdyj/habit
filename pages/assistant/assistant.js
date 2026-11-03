@@ -4,6 +4,7 @@ const config = require('../../utils/config.js');
 
 Page({
   data: {
+    aiEnabled: config.AI_ENABLED,
     statusH: '44px',
     active: 'assistant',
     messages: [],

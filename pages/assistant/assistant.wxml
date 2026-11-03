@@ -1,4 +1,13 @@
 <view class="page">
+  <!-- 提审形态（AI_ENABLED=false）：本页不渲染任何 AI 对话元素，仅空白占位 -->
+  <block wx:if="{{!aiEnabled}}">
+    <view class="status-pad" style="height:{{statusH}}"></view>
+    <view class="assistant-disabled">
+      <view class="ad-text">功能升级中，敬请期待</view>
+    </view>
+  </block>
+
+  <block wx:if="{{aiEnabled}}">
   <view class="status-pad" style="height:{{statusH}}"></view>
 
   <view class="assistant-page">
@@ -128,4 +137,5 @@
       <view class="voice-tip">{{voiceCancel ? '松开取消' : '松开发送 · 上滑取消'}}</view>
     </view>
   </view>
+  </block>
 </view>
