@@ -18,5 +18,5 @@
 // 升级路径：AI 要正式推广时 → 注册个体工商户 → 小程序主体变更 → 申请
 // 深度合成类目 → 本开关改 true 提审即可。
 module.exports = {
-  AI_ENABLED: false
+  AI_ENABLED: true
 };
