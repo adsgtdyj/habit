@@ -7,7 +7,7 @@ const api = require('../../utils/api.js');
 function resolveAppVersion() {
   try {
     const mp = (wx.getAccountInfoSync() || {}).miniProgram || {};
-    if (mp.version) return mp.version;
+    if (mp.version) return 'v' + mp.version;
     if (mp.envVersion === 'trial') return '体验版';
     if (mp.envVersion === 'develop') return '开发版';
     return 'dev';
@@ -271,7 +271,7 @@ Page({
 
   onAbout() {
     wx.showModal({
-      title: '关于 habit v' + APP_VERSION,
+      title: '关于 habit ' + APP_VERSION,
       content: '一款让你把好习惯坚持下来的小程序。数据保存在微信云端，可通过导出导入迁移。',
       showCancel: false,
       confirmText: '好的'
