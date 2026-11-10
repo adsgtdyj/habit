@@ -2,6 +2,21 @@ const { TAB_MAP } = require('../../utils/constants.js');
 const store = require('../../utils/store.js');
 const api = require('../../utils/api.js');
 
+// 显示版本号：正式版返回真实版本号（如 1.1.3）；开发/体验版 version 为空串，
+// 用 envVersion 兜底标识，避免再出现"线上跑的到底是哪版"无法分辨的问题。
+function resolveAppVersion() {
+  try {
+    const mp = (wx.getAccountInfoSync() || {}).miniProgram || {};
+    if (mp.version) return mp.version;
+    if (mp.envVersion === 'trial') return '体验版';
+    if (mp.envVersion === 'develop') return '开发版';
+    return 'dev';
+  } catch (e) {
+    return 'dev';
+  }
+}
+const APP_VERSION = resolveAppVersion();
+
 Page({
   data: {
     statusH: '44px',
@@ -20,7 +35,8 @@ Page({
     editAvatar: 'user',
     editAvatarIsImage: false,
     accountName: '',
-    accountOpenid: ''
+    accountOpenid: '',
+    appVersion: APP_VERSION
   },
 
   onLoad() {
@@ -255,7 +271,7 @@ Page({
 
   onAbout() {
     wx.showModal({
-      title: '关于 habit v13',
+      title: '关于 habit v' + APP_VERSION,
       content: '一款让你把好习惯坚持下来的小程序。数据保存在微信云端，可通过导出导入迁移。',
       showCancel: false,
       confirmText: '好的'
